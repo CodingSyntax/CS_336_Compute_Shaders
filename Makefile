@@ -10,7 +10,7 @@ CFLAGS = -Iinclude
 LDFLAGS = -Llibs -lOpenGL32 -lglfw3dll -lm
 
 BIN = Program
-FILES = main glad
+FILES = main glad util
 
 OBJS = $(patsubst %, out/%.o, $(FILES))
 PROD = $(patsubst %, out/%.prod, $(FILES))
@@ -37,6 +37,10 @@ out/%.o: src/%.cpp
 out/%.o: src/%.c
 	@$(ECHO) Compiling $<
 	$(CC) $(CXXFLAGS) $(CFLAGS) $< -c -o $@
+
+out/%.to: src/%.tpp
+	@$(ECHO) Compiling $<
+	$(CC) $(CXXFLAGS) $(CFLAGS) $< -c -o $@	
 
 out/%.prod: src/%.cpp
 	@$(ECHO) Compiling $<
