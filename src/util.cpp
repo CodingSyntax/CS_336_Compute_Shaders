@@ -7,6 +7,7 @@ unsigned int loadAndCompileShader(const char *shaderSrc, unsigned int moduleType
     
     int success;
     glGetShaderiv(shaderModule, GL_COMPILE_STATUS, &success);
+
     if (!success) {
         char errorLog[1024];
         glGetShaderInfoLog(shaderModule, 1024, NULL, errorLog);
