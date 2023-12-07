@@ -5,12 +5,41 @@ layout(local_size_x = 8, local_size_y = 8) in;
 
 layout(rgba32f, binding = 0) uniform image2D colorBuffer;
 
+layout(std430, binding = 1) buffer particleBuffer
+{
+    // Should be in the format {posX, posY, accX, accY, mass}
+    float particles[][5];
+}
+
 void main() {
     ivec2 pixelPos = ivec2(gl_GlobalInvocationID.xy);
     ivec2 screenSize = imageSize(colorBuffer);
     if (pixelPos.x >= screenSize.x || pixelPos.y >= screenSize.y) return;
     
     float apectRatio = float(screenSize.y)/screenSize.x;
+    
+    // DO the math thing
+    float distx, disty, A, netAx, netAy, dir;
+    
+    for (int i = 0; i < particles.length(); i++) {
+        netAx = 0;
+        netAy = 0;
+        for(j = 0 ; j < size; ++j) {
+            if (j == i) continue;
+
+            distx = particles[j][0] - particles[i][0]; 
+            disty = particles[j][1] - particles[i][1];
+
+            if (abs(distx) <= 1 && abs(disty) <= 1) continue; //Prevents division by 0
+            dir = atan(disty, distx);
+
+            A = particles[j][4] / (distx * distx + disty * disty);
+            netAx += A * cos(dir);
+            netAy += A * sin(dir);
+        }
+        // accelXL[i] = netAx * G;
+        // accelYL[i] = netAy * G;
+    }
     
     vec3 color = vec3(0.0);
     
