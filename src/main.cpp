@@ -6,14 +6,22 @@
 #include <thread>
 #include <cmath>
 
+#define WG_SIZE_X 8
+#define WG_SIZE_Y 8
+
 extern char _binary_src_shaders_fragment_frag_start[];
 extern char _binary_src_shaders_vertex_vert_start[];
+extern char _binary_src_shaders_gravity_comp_start[];
+extern char _binary_src_shaders_color_comp_start[];
 
 const int WIDTH = 400;
 const int HEIGHT = 400;
 
 GLFWwindow* window;
 unsigned int shaderProgram;
+unsigned int computeShader;
+
+unsigned int colorBuffer;
 
 // VERTICES DATA
 unsigned int verticesBuffer;
@@ -73,8 +81,7 @@ void updateTexture() {
     glUniform1i(textureSamplerLocation, 0);
 }
 
-
-void draw() {
+void drawGravSim() {
     int width, height;
     glfwGetFramebufferSize(window, &width, &height);
     glViewport(0, 0, width, height);
@@ -105,18 +112,70 @@ void draw() {
 
     renderParticle();
     updateTexture();
-
-    glEnd();
     
     glfwSwapBuffers(window);
     glfwPollEvents();
 }
 
+void drawComputeShader() {
+    int width, height;
+    glfwGetFramebufferSize(window, &width, &height);
+    glViewport(0, 0, width, height);
+    
+    glClear(GL_COLOR_BUFFER_BIT);
+    glUseProgram(computeShader);
+    
+    
+    
+    glBindImageTexture(0, colorBuffer, 0, false, 0, GL_WRITE_ONLY, GL_RGBA32F);
+    //floor
+    glDispatchCompute((width + WG_SIZE_X - 1) / WG_SIZE_X, (height + WG_SIZE_Y - 1) / WG_SIZE_Y, 1);
+    glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+    
+    
+    glUseProgram(shaderProgram);
+    
+    unsigned int pos, tex;
+    pos = glGetAttribLocation(shaderProgram, "a_Position");
+    tex = glGetAttribLocation(shaderProgram, "a_TexCoords");
+
+    glEnableVertexAttribArray(pos);
+    glEnableVertexAttribArray(tex);
+    
+    glBindBuffer(GL_ARRAY_BUFFER, verticesBuffer);
+    glVertexAttribPointer(pos, 2, GL_FLOAT, false, 0, 0);
+
+    glBindBuffer(GL_ARRAY_BUFFER, texCoordsBuffer);
+    glVertexAttribPointer(tex, 2, GL_FLOAT, false, 0, 0);
+    
+    // glBindBuffer(GL_ARRAY_BUFFER, NULL);
+    
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, colorBuffer);
+    
+    textureSamplerLocation = glGetUniformLocation(shaderProgram, "textureSampler");
+    glUniform1i(textureSamplerLocation, 0);
+    
+    glDrawArrays(GL_TRIANGLES, 0, 6);
+    
+    glDisableVertexAttribArray(pos);
+    glDisableVertexAttribArray(tex);
+    
+    glfwSwapBuffers(window);
+    glfwPollEvents();
+}
+
+
+void draw() {
+    drawComputeShader();
+}
+
 int main(int argc, char *argv[]) {
-    std::cout << "Starting..." << std::endl;
+    std::cout << "Starting... " << std::endl;
     
     char *fragSrc = _binary_src_shaders_fragment_frag_start;
     char *vertSrc = _binary_src_shaders_vertex_vert_start;
+    char *computeSrc = _binary_src_shaders_color_comp_start;
     // std::cout << "Frag:\n" << p << std::endl;
     
     if (!glfwInit()) {
@@ -144,6 +203,14 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
     
+    std::cout << "Open GL: " << glGetString(GL_VERSION) << std::endl;
+    
+    glGenTextures(1, &colorBuffer);
+    glBindTexture(GL_TEXTURE_2D, colorBuffer);
+    glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA32F, WIDTH, HEIGHT);
+    
+    
+    
     std::vector<float> verts = {
         -1, 1, 1, 1, -1, -1,
         -1, -1, 1, 1, 1, -1
@@ -156,6 +223,7 @@ int main(int argc, char *argv[]) {
     };
     
     shaderProgram = createShaderProgram(vertSrc, fragSrc);
+    computeShader = createShaderProgram(computeSrc);
     verticesBuffer = createAndLoadBuffer(verts);
     texCoordsBuffer = createAndLoadBuffer(texCoords);
 

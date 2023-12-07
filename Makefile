@@ -11,7 +11,7 @@ LDFLAGS = -Llibs -lOpenGL32 -lglfw3 -lm -lgdi32
 
 BIN = Program
 FILES = main glad util
-EMBED = shaders/fragment shaders/vertex
+EMBED = shaders/fragment shaders/vertex shaders/gravity shaders/color
 
 OBJS = $(patsubst %, out/%.o, $(FILES))
 PROD = $(patsubst %, out/%.prod, $(FILES))
@@ -45,6 +45,10 @@ out/%.o: src/%.frag
 	ld -r -b binary -o $@ $<
 
 out/%.o: src/%.vert
+	@$(ECHO) Converting $<
+	ld -r -b binary -o $@ $<
+
+out/%.o: src/%.comp
 	@$(ECHO) Converting $<
 	ld -r -b binary -o $@ $<
 
