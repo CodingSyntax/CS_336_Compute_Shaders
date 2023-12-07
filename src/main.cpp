@@ -6,6 +6,9 @@
 #include <thread>
 #include <cmath>
 
+extern char _binary_src_shaders_fragment_frag_start[];
+extern char _binary_src_shaders_vertex_vert_start[];
+
 const int WIDTH = 400;
 const int HEIGHT = 400;
 
@@ -112,6 +115,10 @@ void draw() {
 int main(int argc, char *argv[]) {
     std::cout << "Starting..." << std::endl;
     
+    char *fragSrc = _binary_src_shaders_fragment_frag_start;
+    char *vertSrc = _binary_src_shaders_vertex_vert_start;
+    // std::cout << "Frag:\n" << p << std::endl;
+    
     if (!glfwInit()) {
         std::cerr << "Failed to init" << std::endl;
         exit(EXIT_FAILURE);
@@ -148,13 +155,13 @@ int main(int argc, char *argv[]) {
         0, 0, 1, 1, 1, 0
     };
     
-    shaderProgram = createShaderProgram("src/shaders/vertex.vert", "src/shaders/fragment.frag");
+    shaderProgram = createShaderProgram(vertSrc, fragSrc);
     verticesBuffer = createAndLoadBuffer(verts);
     texCoordsBuffer = createAndLoadBuffer(texCoords);
 
     initTexture();
     initWorld();
-
+  
     glClearColor(0.2f, 0.8f, 0.8f, 1.0f);
     
     //draw

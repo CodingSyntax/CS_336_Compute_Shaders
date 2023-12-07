@@ -2,9 +2,9 @@
 #include "config.h"
 #include "util.h"
 
-unsigned int loadAndCompileShader(const std::string &filePath, unsigned int moduleType);
+unsigned int loadAndCompileShader(const char *shaderSrc, unsigned int moduleType);
 
-unsigned int createShaderProgram(const std::string &vertexFilePath, const std::string &fragmentFilePath);
+unsigned int createShaderProgram(const char *vertexSrc, const char *fragmentSrc);
 
 template <typename T>
 unsigned int createAndLoadBuffer(std::vector<T> data) {
