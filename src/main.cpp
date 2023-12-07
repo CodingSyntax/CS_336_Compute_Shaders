@@ -2,9 +2,15 @@
 #include <math.h>
 #include "util.h"
 
+extern char _binary_src_shaders_fragment_frag_start[];
+extern char _binary_src_shaders_vertex_vert_start[];
 
 int main(int argc, char *argv[]) {
     std::cout << "Starting..." << std::endl;
+    
+    char *fragSrc = _binary_src_shaders_fragment_frag_start;
+    char *vertSrc = _binary_src_shaders_vertex_vert_start;
+    // std::cout << "Frag:\n" << p << std::endl;
     
     if (!glfwInit()) {
         std::cerr << "Failed to init" << std::endl;
@@ -40,7 +46,7 @@ int main(int argc, char *argv[]) {
         -1,  1, 0, 0, 1
     };
     
-    unsigned int shader = createShaderProgram("src/shaders/vertex.vert", "src/shaders/fragment.frag");
+    unsigned int shader = createShaderProgram(vertSrc, fragSrc);
     
     unsigned int vBuffer = createAndLoadBuffer(verts);
     
