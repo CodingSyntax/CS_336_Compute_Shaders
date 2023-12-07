@@ -44,6 +44,26 @@ unsigned int createShaderProgram(const char *vertexSrc, const char *fragmentSrc)
     return shader;
 }
 
+unsigned int createShaderProgram(const char *computeSrc) {
+    unsigned int module = loadAndCompileShader(computeSrc, GL_COMPUTE_SHADER);
+    
+    unsigned int shader = glCreateProgram();
+    glAttachShader(shader, module);
+    glLinkProgram(shader);
+    
+    int success;
+    glGetProgramiv(shader, GL_LINK_STATUS, &success);
+    if (!success) {
+        char errorLog[1024];
+        glGetShaderInfoLog(shader, 1024, NULL, errorLog);
+        std::cerr << "Shader linking error:\n" << errorLog << std::endl;
+    }
+    
+    glDeleteShader(module);
+    
+    return shader;
+}
+
 unsigned int createAndLoadIndexBuffer(std::vector<unsigned int> data) {
     unsigned int buffer;
     glGenBuffers(1, &buffer);
