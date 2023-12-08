@@ -85,6 +85,24 @@ void createMass(GLFWwindow* window) {
 void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
     if (key == GLFW_KEY_SPACE && action == GLFW_PRESS)
         pauseSim();
+    if (key == GLFW_KEY_UP && (action == GLFW_PRESS || action == GLFW_REPEAT)) {
+        if (mods == GLFW_MOD_CONTROL) massSel += 10;
+        else if (mods == GLFW_MOD_ALT) massSel += 100;
+        else if (mods == (GLFW_MOD_CONTROL | GLFW_MOD_ALT)) massSel += 1000;
+        else if (mods == GLFW_MOD_SHIFT) massSel += 0.1f;
+        else if (mods == (GLFW_MOD_SHIFT | GLFW_MOD_CONTROL)) massSel += 0.01f;
+        else if (mods == (GLFW_MOD_SHIFT | GLFW_MOD_CONTROL | GLFW_MOD_ALT)) massSel += 0.001f;
+        else massSel++;
+    }
+    if (key == GLFW_KEY_DOWN && (action == GLFW_PRESS || action == GLFW_REPEAT)) {
+        if (mods == GLFW_MOD_CONTROL) massSel -= 10;
+        else if (mods == GLFW_MOD_ALT) massSel -= 100;
+        else if (mods == (GLFW_MOD_CONTROL | GLFW_MOD_ALT)) massSel -= 1000;
+        else if (mods == GLFW_MOD_SHIFT) massSel -= 0.1f;
+        else if (mods == (GLFW_MOD_SHIFT | GLFW_MOD_CONTROL)) massSel -= 0.01f;
+        else if (mods == (GLFW_MOD_SHIFT | GLFW_MOD_CONTROL | GLFW_MOD_ALT)) massSel -= 0.001f;
+        else massSel--;
+    }
 }
 
 void mouseCallback(GLFWwindow* window, int button, int action, int mods) {
@@ -328,7 +346,7 @@ void initWorld() {
     float sumRadii = 2.0f;
     float deltaX, deltaY;
     addParticle(100, 200, 200, 0, 0);
-    for (i = 0; i < 20000; i++) {
+    for (i = 0; i < 1000; i++) {
     // r1 = std::rand() % 2 ? 1 : -1;
     // r2 = std::rand() % 2 ? 1 : -1;
         minDist = 0.0f;
