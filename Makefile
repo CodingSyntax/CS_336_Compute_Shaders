@@ -10,7 +10,7 @@ CFLAGS = -Iinclude
 LDFLAGS = -Llibs -lOpenGL32 -lglfw3 -lm -lgdi32
 
 BIN = Program
-FILES = main glad util
+FILES = main glad util dataHandle
 EMBED = shaders/fragment shaders/vertex shaders/gravity shaders/color
 
 OBJS = $(patsubst %, out/%.o, $(FILES))

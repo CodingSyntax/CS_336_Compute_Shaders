@@ -5,6 +5,7 @@
 #include <chrono>
 #include <thread>
 #include <cmath>
+#include "dataHandle.h"
 
 #define WG_SIZE_X 8
 #define WG_SIZE_Y 8
@@ -23,6 +24,9 @@ unsigned int computeShader;
 
 unsigned int colorBuffer;
 
+unsigned int accelBuffer, particleBuffer;
+
+
 // VERTICES DATA
 unsigned int verticesBuffer;
 unsigned int texCoordsBuffer;
@@ -33,13 +37,21 @@ GLubyte* pixels;
 GLint textureSamplerLocation;
 
 // UNIVERSE DATA
-std::vector<float> positionXL;
-std::vector<float> positionYL;
-std::vector<float> accelXL;
-std::vector<float> accelYL;
+// bool updateParticleData = true;
+Data3 particleData;
+// float particleData[][3];
+// unsigned int particleDataSize;
+// std::vector<float> positionXL;
+// std::vector<float> positionYL;
+// std::vector<float> accelXL;
+// std::vector<float> accelYL;
+// bool updateAccelData = true;
+Data2 accelData;
+// float accelData[][2];
+// unsigned int accelDataSize;
 std::vector<float> velocityXL;
 std::vector<float> velocityYL;
-std::vector<int> massL;
+// std::vector<int> massL;
 std::vector<unsigned long int[2]> combination;
 
 const float G = 0.1;
@@ -51,7 +63,7 @@ const float TIMESTEP = 0.02;
 
 void initWorld();
 void updateWorld();
-void addParticle(int mass, float x, float y, float vx, float vy);
+void addParticle(float mass, float x, float y, float vx, float vy);
 void renderParticle();
 
 void initTexture() {
@@ -102,13 +114,13 @@ void drawGravSim() {
     glBindBuffer(GL_ARRAY_BUFFER, texCoordsBuffer);
     glVertexAttribPointer(tex, 2, GL_FLOAT, false, 0, 0);
     
-    // glBindBuffer(GL_ARRAY_BUFFER, NULL);
+    glBindBuffer(GL_ARRAY_BUFFER, GL_NONE);
     
     glDrawArrays(GL_TRIANGLES, 0, 6);
     
     glDisableVertexAttribArray(pos);
     glDisableVertexAttribArray(tex);
-    // glUseProgram(NULL);
+    glUseProgram(GL_NONE);
 
     renderParticle();
     updateTexture();
@@ -148,7 +160,7 @@ void drawComputeShader() {
     glBindBuffer(GL_ARRAY_BUFFER, texCoordsBuffer);
     glVertexAttribPointer(tex, 2, GL_FLOAT, false, 0, 0);
     
-    // glBindBuffer(GL_ARRAY_BUFFER, NULL);
+    glBindBuffer(GL_ARRAY_BUFFER, GL_NONE);
     
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, colorBuffer);
@@ -161,13 +173,37 @@ void drawComputeShader() {
     glDisableVertexAttribArray(pos);
     glDisableVertexAttribArray(tex);
     
+    glUseProgram(GL_NONE);
+    
     glfwSwapBuffers(window);
     glfwPollEvents();
 }
 
+void computeGravity() {
+    glUseProgram(computeShader);
+    const int WGX = 64;
+    
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, particleBuffer);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, particleData.getFullSize(), particleData.getData(), GL_STATIC_DRAW);
+    
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, accelBuffer);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, accelData.getFullSize(), accelData.getData(), GL_DYNAMIC_READ);
+    //ceiling math
+    glDispatchCompute((particleData.getSize() + WGX - 1) / WGX, 1, 1);
+    glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+    
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, accelBuffer);
+    void *p = glMapBuffer(GL_SHADER_STORAGE_BUFFER, GL_READ_WRITE);
+    
+    memcpy(accelData.getData(), p, accelData.getFullSize());
+    
+    glUseProgram(GL_NONE);
+}
+
 
 void draw() {
-    drawComputeShader();
+    computeGravity();
+    drawGravSim();
 }
 
 int main(int argc, char *argv[]) {
@@ -175,7 +211,7 @@ int main(int argc, char *argv[]) {
     
     char *fragSrc = _binary_src_shaders_fragment_frag_start;
     char *vertSrc = _binary_src_shaders_vertex_vert_start;
-    char *computeSrc = _binary_src_shaders_color_comp_start;
+    char *computeSrc = _binary_src_shaders_gravity_comp_start;
     // std::cout << "Frag:\n" << p << std::endl;
     
     if (!glfwInit()) {
@@ -209,6 +245,18 @@ int main(int argc, char *argv[]) {
     glBindTexture(GL_TEXTURE_2D, colorBuffer);
     glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA32F, WIDTH, HEIGHT);
     
+    glGenBuffers(1, &accelBuffer);
+    glGenBuffers(1, &particleBuffer);
+    
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, particleBuffer);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, particleData.getFullSize(), particleData.getData(), GL_STATIC_DRAW);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, particleBuffer);
+    
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, accelBuffer);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, accelData.getFullSize(), accelData.getData(), GL_DYNAMIC_READ);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, accelBuffer);
+    
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
     
     
     std::vector<float> verts = {
@@ -236,9 +284,9 @@ int main(int argc, char *argv[]) {
     
     
     while (!glfwWindowShouldClose(window)) {
-        updateWorld();
         //std::cout << positionXL[0] << std::endl;
         draw();
+        updateWorld();
         //std::this_thread::sleep_for(timespan);
     }
     
@@ -266,48 +314,55 @@ void initWorld() {
     // addParticle(10, 10, 10, 0, 0);
 }
 
-void addParticle(int mass, float x, float y, float vx, float vy) {
-    massL.push_back(mass);
-    positionXL.push_back(x);
-    positionYL.push_back(y);
+void addParticle(float mass, float x, float y, float vx, float vy) {
+    float data[3] = {x, y, mass};
+    particleData.add(data);
+    // massL.push_back(mass);
+    // positionXL.push_back(x);
+    // positionYL.push_back(y);
     velocityXL.push_back(vx);
     velocityYL.push_back(vy);
-    accelXL.push_back(0);
-    accelYL.push_back(0);
+    float accel[2] = {0,0};
+    accelData.add(accel);
+    // accelXL.push_back(0);
+    // accelYL.push_back(0);
 }
 
 void updateWorld() {
     // CALCULATE FORCES, ACCELERATIONS, VELOCITIES, POSITIONS
-    float distx, disty, A, netAx, netAy, dir;
-    long unsigned size = massL.size();
+    
+    // float distx, disty, A, netAx, netAy, dir;
+    long unsigned size = particleData.getSize();
     long unsigned i,j;
 
-    for(i = 0 ; i < size; ++i) {
-        netAx = 0;
-        netAy = 0;
-        for(j = 0 ; j < size; ++j) {
-            if (j == i) continue;
+    // for(i = 0 ; i < size; ++i) {
+    //     netAx = 0;
+    //     netAy = 0;
+    //     for(j = 0 ; j < size; ++j) {
+    //         if (j == i) continue;
 
-            distx = positionXL[j] - positionXL[i]; 
-            disty = positionYL[j] - positionYL[i];
+    //         distx = positionXL[j] - positionXL[i]; 
+    //         disty = positionYL[j] - positionYL[i];
 
-            if (abs(distx) <= 1 && abs(disty) <= 1) continue; //Prevents division by 0
-            dir = atan2(disty, distx);
+    //         if (abs(distx) <= 1 && abs(disty) <= 1) continue; //Prevents division by 0
+    //         dir = atan2(disty, distx);
 
-            A = massL[j] / (distx * distx + disty * disty);
-            netAx += A * cos(dir);
-            netAy += A * sin(dir);
-        }
-        accelXL[i] = netAx * G;
-        accelYL[i] = netAy * G;
+    //         A = massL[j] / (distx * distx + disty * disty);
+    //         netAx += A * cos(dir);
+    //         netAy += A * sin(dir);
+    //     }
+    //     accelXL[i] = netAx * G;
+    //     accelYL[i] = netAy * G;
 
-    }
+    // }
+    
+    
     
     for(i = 0 ; i < size; ++i) {
-        velocityXL[i] += accelXL[i] * TIMESTEP;
-        velocityYL[i] += accelYL[i] * TIMESTEP;
-        positionXL[i] += velocityXL[i] * TIMESTEP;
-        positionYL[i] += velocityYL[i] * TIMESTEP;
+        velocityXL[i] += accelData[i][0] * TIMESTEP;
+        velocityYL[i] += accelData[i][1] * TIMESTEP;
+        particleData[i][0] += velocityXL[i] * TIMESTEP;
+        particleData[i][1] += velocityYL[i] * TIMESTEP;
     }
 }
 
@@ -317,9 +372,9 @@ void renderParticle() {
 
     memset(pixels, 0, WIDTH * HEIGHT * 4);
     
-    for (i = 0; i < massL.size(); ++i) {
-        x = (int)positionXL[i];
-        y = (int)positionYL[i];
+    for (i = 0; i < particleData.getSize(); ++i) {
+        x = (int)particleData[i][0];
+        y = (int)particleData[i][0];
         if (x >= WIDTH || x < 0 || y >= HEIGHT || y < 0) continue;
       //  std::cout << x << " " << y << std::endl;
         pixels[(x + y * WIDTH) * 4 + 0] = 255;  // Red
