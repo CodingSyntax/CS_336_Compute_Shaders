@@ -35,8 +35,8 @@ std::vector<float> accelYL;
 std::vector<float> velocityXL;
 std::vector<float> velocityYL;
 
-std::vector<float> iVelocityXL;
-std::vector<float> iVelocityYL;
+// std::vector<float> iVelocityXL;
+// std::vector<float> iVelocityYL;
 
 std::vector<float> oldPositionXL;
 std::vector<float> oldPositionYL;
@@ -233,8 +233,8 @@ void addParticle(int mass, float x, float y, float vx, float vy) {
     oldPositionYL.push_back(y);
     velocityXL.push_back(vx);
     velocityYL.push_back(vy);
-    iVelocityXL.push_back(0);
-    iVelocityYL.push_back(0);
+    // iVelocityXL.push_back(0);
+    // iVelocityYL.push_back(0);
     forceXL.push_back(0);
     forceYL.push_back(0);
     accelXL.push_back(0);
@@ -320,8 +320,8 @@ void calculatePosition() {
         // velocityYL[i] = (positionYL[i] - oldPositionYL[i]) / TIMESTEP;
         // oldPositionXL[i] = positionXL[i];        
         // oldPositionYL[i] = positionYL[i];
-        velocityXL[i] += (forceXL[i] * TIMESTEP) / massL[i] + iVelocityXL[i];
-        velocityYL[i] += (forceYL[i] * TIMESTEP) / massL[i] + iVelocityYL[i];
+        velocityXL[i] += (forceXL[i] * TIMESTEP) / massL[i]; //+ iVelocityXL[i];
+        velocityYL[i] += (forceYL[i] * TIMESTEP) / massL[i]; //+ iVelocityYL[i];
         positionXL[i] += velocityXL[i] * TIMESTEP;
         positionYL[i] += velocityYL[i] * TIMESTEP;
     }
@@ -339,10 +339,10 @@ void calculateCollision() {
     float sumMass, reducedMass;
     float elasticity = 0.0f;
 
-    for (i = 0; i < massL.size(); ++i) {
-        iVelocityXL[i] = 0;
-        iVelocityYL[i] = 0;
-    }
+    // for (i = 0; i < massL.size(); ++i) {
+    //     iVelocityXL[i] = 0;
+    //     iVelocityYL[i] = 0;
+    // }
 
     // After applying forces and integrating position
     for (i = 0; i < massL.size(); ++i)
@@ -381,10 +381,10 @@ void calculateCollision() {
                 
                 impulseX = collisionNormalX * (-constraintSpeed * (1.f + elasticity)) * reducedMass;
                 impulseY = collisionNormalY * (-constraintSpeed * (1.f + elasticity)) * reducedMass;
-                iVelocityXL[i] -= impulseX / massL[i];
-                iVelocityYL[i] -= impulseY / massL[i];
-                iVelocityXL[j] += impulseX / massL[j];
-                iVelocityYL[j] += impulseY / massL[j];
+                velocityXL[i] -= impulseX / massL[i];
+                velocityYL[i] -= impulseY / massL[i];
+                velocityXL[j] += impulseX / massL[j];
+                velocityYL[j] += impulseY / massL[j];
             }
         }
     }
