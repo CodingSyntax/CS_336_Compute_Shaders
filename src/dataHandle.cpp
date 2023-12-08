@@ -35,7 +35,7 @@ void Data3::add(float f[3]) {
         unsigned int oldSize = actualSize;
         actualSize *= 2;
         setList();
-        memcpy(list, oldList, oldSize);
+        memcpy(list, oldList, oldSize * sizeof(float) * 3);
         free(oldList);
     }
     
@@ -93,7 +93,7 @@ void Data2::add(float f[2]) {
         unsigned int oldSize = actualSize;
         actualSize *= 2;
         setList();
-        memcpy(list, oldList, oldSize);
+        memcpy(list, oldList, oldSize * sizeof(float) * 2);
         free(oldList);
     }
     int ind = (size - 1) * 2;

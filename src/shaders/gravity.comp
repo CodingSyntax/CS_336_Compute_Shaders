@@ -18,7 +18,7 @@ layout(std430, binding = 2) buffer accelApi
 } accelBuffer;
 
 
-const float G = 0.1;
+const float G = 10;
 
 void main() {
     // ivec2 pixelPos = ivec2(gl_GlobalInvocationID.xy);
@@ -39,7 +39,7 @@ void main() {
         distx = particleBuffer.particles[j][0] - particleBuffer.particles[i][0]; 
         disty = particleBuffer.particles[j][1] - particleBuffer.particles[i][1];
 
-        if (abs(distx) <= 1 && abs(disty) <= 1) continue; //Prevents division by 0
+        if (sqrt(distx * distx + disty * disty) <= 1) continue; //Prevents division by 0
         dir = atan(disty, distx);
 
         A = particleBuffer.particles[j][2] / (distx * distx + disty * disty);

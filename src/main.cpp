@@ -55,7 +55,7 @@ std::vector<float> velocityXL;
 std::vector<float> velocityYL;
 std::vector<unsigned long int[2]> combination;
 
-const float G = 0.1;
+const float G = 10;
 const float TIMESTEP = 0.02;
 
 //std::chrono::milliseconds timespan ((int) (0.02 * 1000));
@@ -321,12 +321,37 @@ int main(int argc, char *argv[]) {
 
 // UNIVERSE FUNCTIONS IMPLEMENTATION
 void initWorld() {
-    addParticle(10, 10, 10, 0, 0);
-    addParticle(10, 50, 50, 0, 0);
-    addParticle(10000, 100, 100, 0, 0);
-    addParticle(12, 200, 200, 0, 0);
-    addParticle(12, 300, 300, 0, 0);
-    addParticle(12, 10, 300, 0, 0);
+    long unsigned i, j;
+    //int r1, r2;
+    int x, y;
+    float dist, minDist = 0.0f;
+    float sumRadii = 2.0f;
+    float deltaX, deltaY;
+    addParticle(100, 200, 200, 0, 0);
+    for (i = 0; i < 20000; i++) {
+    // r1 = std::rand() % 2 ? 1 : -1;
+    // r2 = std::rand() % 2 ? 1 : -1;
+        minDist = 0.0f;
+        while(minDist < sumRadii) {
+            x = (int) (std::rand() % 390) + 10;
+            y = (int) (std::rand() % 390) + 10;
+            for (j = 0; j < particleData.getSize(); ++j) {
+                deltaX = particleData[j][0] - x;
+                deltaY = particleData[j][1] - y;
+                dist = sqrt(deltaX * deltaX + deltaY * deltaY);
+                if (dist < minDist || j == 0) minDist = dist;
+            }
+        //   std::cout << minDist << std::endl;
+        }
+        addParticle(100, x, y, 0, 0);
+    }
+    
+    // addParticle(10, 10, 10, 0, 0);
+    // addParticle(10, 50, 50, 0, 0);
+    // addParticle(10000, 100, 100, 0, 0);
+    // addParticle(12, 200, 200, 0, 0);
+    // addParticle(12, 300, 300, 0, 0);
+    // addParticle(12, 10, 300, 0, 0);
     // addParticle(10, 0, 0, 0, 0);
     // addParticle(10, 400, 400, 0, 0);
     // addParticle(10, 100, 100, 0, 0);
