@@ -1,9 +1,10 @@
 #include "dataHandle.h"
 #include <stdlib.h>
 #include <cstring>
+#include <iostream>
 
 void Data3::setList() {
-    list = (float*)malloc(sizeof(float) * 3 * actualSize);
+    list = (float*)calloc(3 * actualSize, sizeof(float));
 }
 
 Data3::Data3() : size(0), actualSize(8) {
@@ -37,9 +38,18 @@ void Data3::add(float f[3]) {
         memcpy(list, oldList, oldSize);
         free(oldList);
     }
-    *(list + size) = f[0];
-    *(list + size + 1) = f[1];
-    *(list + size + 2) = f[2];
+    
+    int ind = (size - 1) * 3;
+    *(list + ind) = f[0];
+    *(list + ind + 1) = f[1];
+    *(list + ind + 2) = f[2];
+    
+    // std::cout << "{";
+    // for (int i = 0; i < size; i++) {
+    //     int ind = i * 3;
+    //     std::cout << "{" << list[ind] << "," << list[ind + 1] << "," << list[ind + 2] << "}" << std::endl;
+    // }
+    // std::cout << "}" << std::endl;
 }
 
 float *Data3::operator[](unsigned int index) {
@@ -86,8 +96,9 @@ void Data2::add(float f[2]) {
         memcpy(list, oldList, oldSize);
         free(oldList);
     }
-    *(list + size) = f[0];
-    *(list + size + 1) = f[1];
+    int ind = (size - 1) * 3;
+    *(list + ind) = f[0];
+    *(list + ind + 1) = f[1];
 }
 
 float *Data2::operator[](unsigned int index) {
