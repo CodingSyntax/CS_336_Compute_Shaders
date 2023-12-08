@@ -35,6 +35,9 @@ std::vector<float> accelYL;
 std::vector<float> velocityXL;
 std::vector<float> velocityYL;
 
+std::vector<float> iVelocityXL;
+std::vector<float> iVelocityYL;
+
 std::vector<float> oldPositionXL;
 std::vector<float> oldPositionYL;
 std::vector<float> bufferPositionXL;
@@ -42,8 +45,9 @@ std::vector<float> bufferPositionYL;
 
 std::vector<float> massL;
 
-const float G = 10.0f;
-const float TIMESTEP = 0.001f;
+const float G = 100.0f;
+const float TIMESTEP = 0.0001f;
+const float sumRadii = 4.0f;
 
 //std::chrono::milliseconds timespan ((int) (0.02 * 1000));
 
@@ -196,15 +200,14 @@ void initWorld() {
   //int r1, r2;
   int x, y;
   float dist, minDist = 0.0f;
-  float sumRadii = 2.0f;
   float deltaX, deltaY;
 
   addParticle(100, 200, 200, 0, 0);
-  for (i = 0; i < 100; i++) {
+  for (i = 0; i < 1000; i++) {
    // r1 = std::rand() % 2 ? 1 : -1;
    // r2 = std::rand() % 2 ? 1 : -1;
     minDist = 0.0f;
-    while(minDist < sumRadii) {
+    while(minDist <= sumRadii) {
         x = (int) (std::rand() % 390) + 10;
         y = (int) (std::rand() % 390) + 10;
         for (j = 0; j < massL.size(); ++j) {
@@ -230,6 +233,8 @@ void addParticle(int mass, float x, float y, float vx, float vy) {
     oldPositionYL.push_back(y);
     velocityXL.push_back(vx);
     velocityYL.push_back(vy);
+    iVelocityXL.push_back(0);
+    iVelocityYL.push_back(0);
     forceXL.push_back(0);
     forceYL.push_back(0);
     accelXL.push_back(0);
@@ -315,8 +320,8 @@ void calculatePosition() {
         // velocityYL[i] = (positionYL[i] - oldPositionYL[i]) / TIMESTEP;
         // oldPositionXL[i] = positionXL[i];        
         // oldPositionYL[i] = positionYL[i];
-        velocityXL[i] += (forceXL[i] * TIMESTEP) / massL[i];
-        velocityYL[i] += (forceYL[i] * TIMESTEP) / massL[i];
+        velocityXL[i] += (forceXL[i] * TIMESTEP) / massL[i] + iVelocityXL[i];
+        velocityYL[i] += (forceYL[i] * TIMESTEP) / massL[i] + iVelocityYL[i];
         positionXL[i] += velocityXL[i] * TIMESTEP;
         positionYL[i] += velocityYL[i] * TIMESTEP;
     }
@@ -325,7 +330,6 @@ void calculatePosition() {
 void calculateCollision() {
     long unsigned i, j;
     float deltaX, deltaY;
-    float sumRadii = 10.0f;
     float distance;
     float collisionNormalX, collisionNormalY;
     float relativeSpeedX, relativeSpeedY;
@@ -333,7 +337,12 @@ void calculateCollision() {
     float offsetX, offsetY;
     float impulseX, impulseY;
     float sumMass, reducedMass;
-    float elasticity = 0.25;
+    float elasticity = 0.0f;
+
+    for (i = 0; i < massL.size(); ++i) {
+        iVelocityXL[i] = 0;
+        iVelocityYL[i] = 0;
+    }
 
     // After applying forces and integrating position
     for (i = 0; i < massL.size(); ++i)
@@ -351,12 +360,11 @@ void calculateCollision() {
             relativeSpeedY = velocityYL[j] - velocityYL[i];
             constraintSpeed = collisionNormalX * relativeSpeedX + collisionNormalY * relativeSpeedY;
             constraintValue = distance - sumRadii; 
+            
                 //std::cout << constraintValue << " " << constraintSpeed << " " << (constraintValue < 0 ) << std::endl;
             if (constraintValue < 0.f && constraintSpeed < 0.f)
             {
 
-                std::cout << "It urns " << constraintSpeed << std::endl;
-                std::cout << "It urns " << offsetX << " " << offsetY <<  std::endl;
                 sumMass = massL[i] + massL[j];
                 reducedMass = 1.f / (1.f / massL[i] + 1.f / massL[j]);
                 
@@ -368,15 +376,15 @@ void calculateCollision() {
                 positionXL[j] -= offsetX * massL[i] / sumMass;
                 positionYL[j] -= offsetY * massL[i] / sumMass;
 
+                // impulseX = collisionNormalX * (-constraintSpeed * (1.f + elasticity) - 1.f / TIMESTEP * constraintValue) * reducedMass;
+                // impulseY = collisionNormalY * (-constraintSpeed * (1.f + elasticity) - 1.f / TIMESTEP * constraintValue) * reducedMass;
+                
                 impulseX = collisionNormalX * (-constraintSpeed * (1.f + elasticity)) * reducedMass;
                 impulseY = collisionNormalY * (-constraintSpeed * (1.f + elasticity)) * reducedMass;
-                
-                std::cout << "imp " << impulseX << " " << impulseY <<  std::endl;
-                
-                velocityXL[i] -= impulseX / massL[i];
-                velocityYL[i] -= impulseY / massL[i];
-                velocityXL[j] += impulseX / massL[j];
-                velocityYL[j] += impulseY / massL[j];
+                iVelocityXL[i] -= impulseX / massL[i];
+                iVelocityYL[i] -= impulseY / massL[i];
+                iVelocityXL[j] += impulseX / massL[j];
+                iVelocityYL[j] += impulseY / massL[j];
             }
         }
     }
@@ -436,7 +444,7 @@ void renderParticle() {
         if (x >= WIDTH || x < 0 || y >= HEIGHT || y < 0) continue;
       //  std::cout << x << " " << y << std::endl;
         
-        pixels[(x + y * WIDTH) * 4 + 0] = 255;  // Red
+        pixels[(x + y * WIDTH) * 4 + 0] = massL[i] / 2;  // Red
         pixels[(x + y * WIDTH) * 4 + 1] = 255;  // Green
         pixels[(x + y * WIDTH) * 4 + 2] = 255;  // Blue
         pixels[(x + y * WIDTH) * 4 + 3] = 255;  // Alpha
