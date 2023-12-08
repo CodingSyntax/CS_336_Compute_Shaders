@@ -7,13 +7,15 @@ RM = del
 CXXFLAGS = -Wall -ggdb
 CFLAGS = -Iinclude
 
-LDFLAGS = -Llibs -lOpenGL32 -lglfw3dll -lm
+LDFLAGS = -Llibs -lOpenGL32 -lglfw3 -lm -lgdi32
 
 BIN = Program
 FILES = main glad util
+EMBED = shaders/fragment shaders/vertex
 
 OBJS = $(patsubst %, out/%.o, $(FILES))
 PROD = $(patsubst %, out/%.prod, $(FILES))
+EMBEDED = $(patsubst %, out/%.o, $(EMBED))
 
 all: $(BIN)
 #bin/glfw3.dll
@@ -22,7 +24,7 @@ all: $(BIN)
 #	$(shell cp libs/glfw3.dll $@)
 #   cp libs/glfw3.dll $@
 
-$(BIN): $(OBJS)
+$(BIN): $(OBJS) $(EMBEDED)
 	@$(ECHO) Linking $@
 	$(CXX) $^ -o bin/$@.exe $(LDFLAGS)
 
@@ -38,9 +40,13 @@ out/%.o: src/%.c
 	@$(ECHO) Compiling $<
 	$(CC) $(CXXFLAGS) $(CFLAGS) $< -c -o $@
 
-out/%.to: src/%.tpp
-	@$(ECHO) Compiling $<
-	$(CC) $(CXXFLAGS) $(CFLAGS) $< -c -o $@	
+out/%.o: src/%.frag
+	@$(ECHO) Converting $<
+	ld -r -b binary -o $@ $<
+
+out/%.o: src/%.vert
+	@$(ECHO) Converting $<
+	ld -r -b binary -o $@ $<
 
 out/%.prod: src/%.cpp
 	@$(ECHO) Compiling $<
@@ -48,5 +54,8 @@ out/%.prod: src/%.cpp
 
 clean:
 	@$(ECHO) Removing all generated files
-	@$(RM) out
-	@$(RM) bin/$(BIN).exe
+	@-$(RM) out
+	@-$(RM) bin/$(BIN).exe
+	-mkdir out\shaders
+	-mkdir bin
+    
