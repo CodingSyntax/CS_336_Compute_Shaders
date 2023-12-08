@@ -18,6 +18,8 @@ extern char _binary_src_shaders_color_comp_start[];
 const int WIDTH = 400;
 const int HEIGHT = 400;
 
+bool pause = false;
+
 GLFWwindow* window;
 unsigned int shaderProgram;
 unsigned int computeShader;
@@ -58,6 +60,17 @@ const float G = 0.1;
 const float TIMESTEP = 0.02;
 
 //std::chrono::milliseconds timespan ((int) (0.02 * 1000));
+
+void pauseSim() {
+    pause = !pause;
+}
+
+void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+    if (key == GLFW_KEY_SPACE && action == GLFW_PRESS)
+        pauseSim();
+}
+
 
 // UNIVERSE FUNCTIONS (USED IN MAIN, DRAW, AND UPDATE)
 
@@ -202,7 +215,7 @@ void computeGravity() {
 
 
 void draw() {
-    computeGravity();
+    if (!pause) computeGravity();
     drawGravSim();
 }
 
@@ -240,6 +253,7 @@ int main(int argc, char *argv[]) {
     }
     
     std::cout << "Open GL: " << glGetString(GL_VERSION) << std::endl;
+    glfwSetKeyCallback(window, keyCallback);
     
     glGenTextures(1, &colorBuffer);
     glBindTexture(GL_TEXTURE_2D, colorBuffer);
@@ -286,7 +300,7 @@ int main(int argc, char *argv[]) {
     while (!glfwWindowShouldClose(window)) {
         //std::cout << positionXL[0] << std::endl;
         draw();
-        updateWorld();
+        if (!pause) updateWorld();
         //std::this_thread::sleep_for(timespan);
     }
     
@@ -374,7 +388,7 @@ void renderParticle() {
     
     for (i = 0; i < particleData.getSize(); ++i) {
         x = (int)particleData[i][0];
-        y = (int)particleData[i][0];
+        y = (int)particleData[i][1];
         if (x >= WIDTH || x < 0 || y >= HEIGHT || y < 0) continue;
       //  std::cout << x << " " << y << std::endl;
         pixels[(x + y * WIDTH) * 4 + 0] = 255;  // Red
