@@ -26,13 +26,18 @@ std::vector<float> positionXL;
 std::vector<float> positionYL;
 std::vector<float> accelXL;
 std::vector<float> accelYL;
-std::vector<float> velocityXL;
-std::vector<float> velocityYL;
-std::vector<int> massL;
-std::vector<unsigned long int[2]> combination;
 
-const float G = 0.1;
+std::vector<float> velocityiXL;
+std::vector<float> velocityiYL;
+std::vector<float> velocityfXL;
+std::vector<float> velocityfYL;
+
+std::vector<float> massL;
+std::vector<std::vector<int>> collision;
+
+const float G = 0.2;
 const float TIMESTEP = 0.02;
+const float COEFFICIENT_OF_RESTITUTION = 0.55f;
 
 //std::chrono::milliseconds timespan ((int) (0.02 * 1000));
 
@@ -177,12 +182,25 @@ int main(int argc, char *argv[]) {
 
 // UNIVERSE FUNCTIONS IMPLEMENTATION
 void initWorld() {
-    addParticle(10, 10, 10, 0, 0);
-    addParticle(10, 50, 50, 0, 0);
-    addParticle(10000, 100, 100, 0, 0);
-    addParticle(12, 200, 200, 0, 0);
-    addParticle(12, 300, 300, 0, 0);
-    addParticle(12, 10, 300, 0, 0);
+
+  long unsigned i;
+  //int r1, r2;
+  addParticle(1000, 200, 200, 0, 0);
+  for (i = 0; i < 500; i++) {
+   // r1 = std::rand() % 2 ? 1 : -1;
+   // r2 = std::rand() % 2 ? 1 : -1;
+    addParticle(std::rand() % 1000, std::rand() % 390 + 10, std::rand() % 390 + 10, 0, 0); //(std::rand() % 20 + 2) * r1, (std::rand() % 20 + 2)  * r2);
+  }
+    
+    // addParticle(100, 100, 210, 5, -5);
+    // addParticle(100, 170, 210, 0, -5);
+    // addParticle(100, 240, 210, -5, -5);
+    //addParticle(100, 215, 218.66025f, 0, 0);
+    // addParticle(200, 50, 50, 0, 0);
+    // addParticle(100, 100, 50, 0, 0);
+    // addParticle(120, 200, 200, 0, 0);
+    // addParticle(120, 300, 300, 0, 0);
+    // addParticle(120, 10, 300, 0, 0);
     // addParticle(10, 0, 0, 0, 0);
     // addParticle(10, 400, 400, 0, 0);
     // addParticle(10, 100, 100, 0, 0);
@@ -195,10 +213,13 @@ void addParticle(int mass, float x, float y, float vx, float vy) {
     massL.push_back(mass);
     positionXL.push_back(x);
     positionYL.push_back(y);
-    velocityXL.push_back(vx);
-    velocityYL.push_back(vy);
+    velocityiXL.push_back(vx);
+    velocityiYL.push_back(vy);
+    velocityfXL.push_back(0);
+    velocityfYL.push_back(0);
     accelXL.push_back(0);
     accelYL.push_back(0);
+    collision.push_back({});
 }
 
 void updateWorld() {
@@ -216,7 +237,11 @@ void updateWorld() {
             distx = positionXL[j] - positionXL[i]; 
             disty = positionYL[j] - positionYL[i];
 
-            if (abs(distx) <= 1 && abs(disty) <= 1) continue; //Prevents division by 0
+            if (abs(distx) <= 1 && abs(disty) <= 1) {
+                //collision[i].push_back(j);
+                continue;
+            }
+
             dir = atan2(disty, distx);
 
             A = massL[j] / (distx * distx + disty * disty);
@@ -227,14 +252,38 @@ void updateWorld() {
         accelYL[i] = netAy * G;
 
     }
-    
+  //  unsigned long int k;
+
+    // COLLISION AND BOUNCE
     for(i = 0 ; i < size; ++i) {
-        velocityXL[i] += accelXL[i] * TIMESTEP;
-        velocityYL[i] += accelYL[i] * TIMESTEP;
-        positionXL[i] += velocityXL[i] * TIMESTEP;
-        positionYL[i] += velocityYL[i] * TIMESTEP;
+        velocityfXL[i] = 0;
+        velocityfYL[i] = 0;
+
+        if (collision[i].size() != 0) {
+            // for (j = 0; j < collision[i].size(); ++j) {
+            //     k = collision[i][j];
+            //     velocityfXL[i] += (massL[k] * (COEFFICIENT_OF_RESTITUTION * (velocityiXL[k] - velocityiXL[i]) + velocityiXL[k]) + massL[i] * velocityiXL[i]) / (massL[k] + massL[i]);
+            //     velocityfYL[i] += (massL[k] * (COEFFICIENT_OF_RESTITUTION * (velocityiYL[k] - velocityiYL[i]) + velocityiYL[k]) + massL[i] * velocityiYL[i]) / (massL[k] + massL[i]);
+            //     // velocityfXL[i] = ((massL[i] - massL[k]) * velocityiXL[i] / (massL[i] + massL[k])) + ((2*massL[k]*velocityiXL[k]) / (massL[i] + massL[k]));
+
+            //   //  std::cout << i << " collide with " << k << " " << velocityfXL[i] << std::endl;
+
+            // }
+            // collision[i].clear();
+        } else {
+            velocityfXL[i] = velocityiXL[i] + accelXL[i] * TIMESTEP; // Not sure if this improves speed in shader since it avoids branching if else
+            velocityfYL[i] = velocityiYL[i] + accelYL[i] * TIMESTEP;
+        }
+        positionXL[i] += velocityfXL[i] * TIMESTEP;
+        positionYL[i] += velocityfYL[i] * TIMESTEP;
+        
     }
+
+    std::swap( velocityfXL, velocityiXL );
+    std::swap( velocityfYL, velocityiYL );
+    
 }
+
 
 void renderParticle() {
     long long unsigned int i;
@@ -247,9 +296,11 @@ void renderParticle() {
         y = (int)positionYL[i];
         if (x >= WIDTH || x < 0 || y >= HEIGHT || y < 0) continue;
       //  std::cout << x << " " << y << std::endl;
-        pixels[(x + y * WIDTH) * 4 + 0] = 255;  // Red
+        
+        pixels[(x + y * WIDTH) * 4 + 0] = i;  // Red
         pixels[(x + y * WIDTH) * 4 + 1] = 255;  // Green
         pixels[(x + y * WIDTH) * 4 + 2] = 255;  // Blue
         pixels[(x + y * WIDTH) * 4 + 3] = 255;  // Alpha
+    
     }
 }
