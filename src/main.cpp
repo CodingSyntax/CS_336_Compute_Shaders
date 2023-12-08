@@ -5,7 +5,13 @@
 #include <chrono>
 #include <thread>
 #include <cmath>
+
 #include "dataHandle.h"
+#define GLT_IMPLEMENTATION
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-function"
+#include "gltext.h"
+#pragma GCC diagnostic pop
 
 #define WG_SIZE_X 8
 #define WG_SIZE_Y 8
@@ -18,8 +24,11 @@ extern char _binary_src_shaders_color_comp_start[];
 const int WIDTH = 400;
 const int HEIGHT = 400;
 
-bool pause = false;
+float massSel = 10;
 
+bool pause = true;
+
+GLTtext *massTxt;
 GLFWwindow* window;
 unsigned int shaderProgram;
 unsigned int computeShader;
@@ -31,6 +40,7 @@ unsigned int accelBuffer, particleBuffer;
 
 // VERTICES DATA
 unsigned int verticesBuffer;
+std::vector<float> verts;
 unsigned int texCoordsBuffer;
 
 // TEXTURE DATA
@@ -39,38 +49,16 @@ GLubyte* pixels;
 GLint textureSamplerLocation;
 
 // UNIVERSE DATA
-// bool updateParticleData = true;
 Data3 particleData;
-// float particleData[][3];
-// unsigned int particleDataSize;
-// std::vector<float> positionXL;
-// std::vector<float> positionYL;
-// std::vector<float> accelXL;
-// std::vector<float> accelYL;
-// bool updateAccelData = true;
 Data2 accelData;
-// float accelData[][2];
-// unsigned int accelDataSize;
 std::vector<float> velocityXL;
 std::vector<float> velocityYL;
-// std::vector<int> massL;
 std::vector<unsigned long int[2]> combination;
 
 const float G = 0.1;
 const float TIMESTEP = 0.02;
 
 //std::chrono::milliseconds timespan ((int) (0.02 * 1000));
-
-void pauseSim() {
-    pause = !pause;
-}
-
-void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
-{
-    if (key == GLFW_KEY_SPACE && action == GLFW_PRESS)
-        pauseSim();
-}
-
 
 // UNIVERSE FUNCTIONS (USED IN MAIN, DRAW, AND UPDATE)
 
@@ -79,31 +67,33 @@ void updateWorld();
 void addParticle(float mass, float x, float y, float vx, float vy);
 void renderParticle();
 
-void initTexture() {
-    glEnable(GL_TEXTURE_2D);
-
-    glGenTextures(1, &textureID);
-    glBindTexture(GL_TEXTURE_2D, textureID);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, WIDTH, HEIGHT, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
-
-    // Allocate memory for pixel data
-    pixels = new GLubyte[WIDTH * HEIGHT * 4];
-    memset(pixels, 0, WIDTH * HEIGHT * 4);
+void pauseSim() {
+    pause = !pause;
 }
 
-void updateTexture() {
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, textureID);
-    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, WIDTH, HEIGHT, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
-    
-    textureSamplerLocation = glGetUniformLocation(shaderProgram, "textureSampler");
-    glUniform1i(textureSamplerLocation, 0);
+void createMass(GLFWwindow* window) {
+    double x, y;
+    glfwGetCursorPos(window, &x, &y);
+    int width, height;
+    glfwGetFramebufferSize(window, &width, &height);
+    double thisX = (x/width) * WIDTH;
+    double thisY = HEIGHT - ((y/height) * HEIGHT);
+    addParticle(massSel, thisX, thisY, 0, 0);
+    std::cout << "(" << thisX << "," << thisY << ")" << std::endl;
+}
+
+void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+    if (key == GLFW_KEY_SPACE && action == GLFW_PRESS)
+        pauseSim();
+}
+
+void mouseCallback(GLFWwindow* window, int button, int action, int mods) {
+    if (button == GLFW_MOUSE_BUTTON_1 && action == GLFW_PRESS)
+        createMass(window); //TODO: change to right click, and allow left click to pan the screen?
+}
+
+void scrollCallback(GLFWwindow* window, double xoffset, double yoffset) {
+    massSel += yoffset;
 }
 
 void drawGravSim() {
@@ -114,32 +104,20 @@ void drawGravSim() {
     glClear(GL_COLOR_BUFFER_BIT);
     glUseProgram(shaderProgram);
     
-    unsigned int pos, tex;
-    pos = glGetAttribLocation(shaderProgram, "a_Position");
-    tex = glGetAttribLocation(shaderProgram, "a_TexCoords");
+    unsigned int pos = glGetAttribLocation(shaderProgram, "a_Position");
 
     glEnableVertexAttribArray(pos);
-    glEnableVertexAttribArray(tex);
     
     glBindBuffer(GL_ARRAY_BUFFER, verticesBuffer);
-    glVertexAttribPointer(pos, 2, GL_FLOAT, false, 0, 0);
-
-    glBindBuffer(GL_ARRAY_BUFFER, texCoordsBuffer);
-    glVertexAttribPointer(tex, 2, GL_FLOAT, false, 0, 0);
+    glVertexAttribPointer(pos, 2, GL_FLOAT, false, sizeof(float) * 3, 0);
+    glUniform2f(glGetUniformLocation(shaderProgram, "scale"), WIDTH, HEIGHT);
     
     glBindBuffer(GL_ARRAY_BUFFER, GL_NONE);
     
-    glDrawArrays(GL_TRIANGLES, 0, 6);
+    glDrawArrays(GL_POINTS, 0, particleData.getSize());
     
     glDisableVertexAttribArray(pos);
-    glDisableVertexAttribArray(tex);
     glUseProgram(GL_NONE);
-
-    renderParticle();
-    updateTexture();
-    
-    glfwSwapBuffers(window);
-    glfwPollEvents();
 }
 
 void drawComputeShader() {
@@ -213,10 +191,36 @@ void computeGravity() {
     glUseProgram(GL_NONE);
 }
 
+void drawMassText() {
+    glFrontFace(GL_CCW);
+    std::ostringstream strStream;
+    strStream << "Gravity Demo - Mass: " << massSel;
+    glfwSetWindowTitle(window, strStream.str().c_str());
+    // gltSetText(massTxt, strStream.str().c_str());
+    
+    // gltBeginDraw();
+    
+    // gltColor(1.0f, 1.0f, 1.0f, 1.0f);
+    // // gltDrawText2D(massTxt, 0.0f, 0.0f, 1.0f);
+    // // float view[] = 
+    // // {1, 0, 0, 0,
+    // //  0, 1, 0, 0,
+    // //  0, 0, 1, 0,
+    // //  0, 0, 0, 1};
+    // // gltDrawText3D(massTxt, 0, 0, -1, 1, view, view);
+    // // gltDrawText(massTxt, view);
+    // gltDrawText2DAligned(massTxt, 0, 0, 1, 0, 0);
+    
+    // gltEndDraw();
+}
 
 void draw() {
     if (!pause) computeGravity();
     drawGravSim();
+    drawMassText();
+    
+    glfwSwapBuffers(window);
+    glfwPollEvents();
 }
 
 int main(int argc, char *argv[]) {
@@ -252,8 +256,19 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
     
+    if (!gltInit()) {
+        glfwTerminate();
+        std::cerr << "GLT faild to load" << std::endl;
+        exit(EXIT_FAILURE);
+    }
+    
+    massTxt = gltCreateText();
+    gltSetText(massTxt, "Hello");
+    
     std::cout << "Open GL: " << glGetString(GL_VERSION) << std::endl;
     glfwSetKeyCallback(window, keyCallback);
+    glfwSetMouseButtonCallback(window, mouseCallback);
+    glfwSetScrollCallback(window, scrollCallback);
     
     glGenTextures(1, &colorBuffer);
     glBindTexture(GL_TEXTURE_2D, colorBuffer);
@@ -272,28 +287,18 @@ int main(int argc, char *argv[]) {
     
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
     
-    
-    std::vector<float> verts = {
-        -1, 1, 1, 1, -1, -1,
-        -1, -1, 1, 1, 1, -1
-    };
-
-
-    std::vector<float> texCoords = {
-        0, 1, 1, 1, 0, 0,
-        0, 0, 1, 1, 1, 0
-    };
+    initWorld();
     
     shaderProgram = createShaderProgram(vertSrc, fragSrc);
     computeShader = createShaderProgram(computeSrc);
     verticesBuffer = createAndLoadBuffer(verts);
-    texCoordsBuffer = createAndLoadBuffer(texCoords);
+    glBindBuffer(GL_ARRAY_BUFFER, verticesBuffer);
+    glBufferData(GL_ARRAY_BUFFER, particleData.getFullSize(), particleData.getData(), GL_STATIC_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-    initTexture();
-    initWorld();
   
-    glClearColor(0.2f, 0.8f, 0.8f, 1.0f);
-    
+    glClearColor(0.f, 0.f, 0.f, 1.0f);
+    glPointSize(3);
     //draw
     
     
@@ -304,6 +309,8 @@ int main(int argc, char *argv[]) {
         //std::this_thread::sleep_for(timespan);
     }
     
+    gltDeleteText(massTxt);
+    gltTerminate();
     glfwDestroyWindow(window);
     glDeleteProgram(shaderProgram);
     glfwTerminate();
@@ -331,6 +338,9 @@ void initWorld() {
 void addParticle(float mass, float x, float y, float vx, float vy) {
     float data[3] = {x, y, mass};
     particleData.add(data);
+    verts.push_back(x/WIDTH);
+    verts.push_back(y/HEIGHT);
+    
     // massL.push_back(mass);
     // positionXL.push_back(x);
     // positionYL.push_back(y);
@@ -343,57 +353,22 @@ void addParticle(float mass, float x, float y, float vx, float vy) {
 }
 
 void updateWorld() {
-    // CALCULATE FORCES, ACCELERATIONS, VELOCITIES, POSITIONS
-    
-    // float distx, disty, A, netAx, netAy, dir;
+    // CALCULATE VELOCITIES, POSITIONS
     long unsigned size = particleData.getSize();
-    long unsigned i,j;
-
-    // for(i = 0 ; i < size; ++i) {
-    //     netAx = 0;
-    //     netAy = 0;
-    //     for(j = 0 ; j < size; ++j) {
-    //         if (j == i) continue;
-
-    //         distx = positionXL[j] - positionXL[i]; 
-    //         disty = positionYL[j] - positionYL[i];
-
-    //         if (abs(distx) <= 1 && abs(disty) <= 1) continue; //Prevents division by 0
-    //         dir = atan2(disty, distx);
-
-    //         A = massL[j] / (distx * distx + disty * disty);
-    //         netAx += A * cos(dir);
-    //         netAy += A * sin(dir);
-    //     }
-    //     accelXL[i] = netAx * G;
-    //     accelYL[i] = netAy * G;
-
-    // }
-    
-    
-    
+    long unsigned i;
     for(i = 0 ; i < size; ++i) {
         velocityXL[i] += accelData[i][0] * TIMESTEP;
         velocityYL[i] += accelData[i][1] * TIMESTEP;
         particleData[i][0] += velocityXL[i] * TIMESTEP;
         particleData[i][1] += velocityYL[i] * TIMESTEP;
     }
-}
-
-void renderParticle() {
-    long long unsigned int i;
-    int x, y;
-
-    memset(pixels, 0, WIDTH * HEIGHT * 4);
     
-    for (i = 0; i < particleData.getSize(); ++i) {
-        x = (int)particleData[i][0];
-        y = (int)particleData[i][1];
-        if (x >= WIDTH || x < 0 || y >= HEIGHT || y < 0) continue;
-      //  std::cout << x << " " << y << std::endl;
-        pixels[(x + y * WIDTH) * 4 + 0] = 255;  // Red
-        pixels[(x + y * WIDTH) * 4 + 1] = 255;  // Green
-        pixels[(x + y * WIDTH) * 4 + 2] = 255;  // Blue
-        pixels[(x + y * WIDTH) * 4 + 3] = 255;  // Alpha
-    }
+    glBindBuffer(GL_ARRAY_BUFFER, verticesBuffer);
+    glBufferData(GL_ARRAY_BUFFER, particleData.getFullSize(), particleData.getData(), GL_STATIC_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    
+    // for (int i = 0; i < particleData.getSize(); i++) {
+    //     std::cout << "(" << particleData[i][0] << "," << particleData[i][1] << ")";
+    // }
+    // std::cout << std::endl;
 }

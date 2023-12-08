@@ -96,7 +96,7 @@ void Data2::add(float f[2]) {
         memcpy(list, oldList, oldSize);
         free(oldList);
     }
-    int ind = (size - 1) * 3;
+    int ind = (size - 1) * 2;
     *(list + ind) = f[0];
     *(list + ind + 1) = f[1];
 }
