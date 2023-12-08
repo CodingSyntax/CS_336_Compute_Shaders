@@ -62,7 +62,7 @@ float *Data3::operator[](unsigned int index) {
 
 
 void Data2::setList() {
-    list = (float*)malloc(sizeof(float) * 2 * actualSize);
+    list = (float*)calloc(2 * actualSize, sizeof(float));
 }
 
 Data2::Data2() : size(0), actualSize(8) {
@@ -104,4 +104,8 @@ void Data2::add(float f[2]) {
 float *Data2::operator[](unsigned int index) {
     if (index >= size) throw "Index out of bounds";
     return list + (index * 2);
+}
+
+void Data2::zero() {
+    setList();
 }

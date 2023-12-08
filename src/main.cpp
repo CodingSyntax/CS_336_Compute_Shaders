@@ -35,7 +35,7 @@ unsigned int computeShader;
 
 unsigned int colorBuffer;
 
-unsigned int accelBuffer, particleBuffer;
+unsigned int forceBuffer, particleBuffer;
 
 
 // VERTICES DATA
@@ -50,7 +50,7 @@ GLint textureSamplerLocation;
 
 // UNIVERSE DATA
 Data3 particleData;
-Data2 accelData;
+Data2 forceData;
 std::vector<float> velocityXL;
 std::vector<float> velocityYL;
 std::vector<unsigned long int[2]> combination;
@@ -62,7 +62,7 @@ const float TIMESTEP = 0.02;
 
 // UNIVERSE FUNCTIONS (USED IN MAIN, DRAW, AND UPDATE)
 
-void initWorld();
+void initWorld(int particles);
 void updateWorld();
 void addParticle(float mass, float x, float y, float vx, float vy);
 void renderParticle();
@@ -195,16 +195,18 @@ void computeGravity() {
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, particleBuffer);
     glBufferData(GL_SHADER_STORAGE_BUFFER, particleData.getFullSize(), particleData.getData(), GL_STATIC_DRAW);
     
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, accelBuffer);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, accelData.getFullSize(), accelData.getData(), GL_DYNAMIC_READ);
+    forceData.zero();
+    
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, forceBuffer);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, forceData.getFullSize(), forceData.getData(), GL_DYNAMIC_READ);
     //ceiling math
     glDispatchCompute((particleData.getSize() + WGX - 1) / WGX, 1, 1);
     glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
     
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, accelBuffer);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, forceBuffer);
     void *p = glMapBuffer(GL_SHADER_STORAGE_BUFFER, GL_READ_WRITE);
     
-    memcpy(accelData.getData(), p, accelData.getFullSize());
+    memcpy(forceData.getData(), p, forceData.getFullSize());
     
     glUseProgram(GL_NONE);
 }
@@ -292,20 +294,26 @@ int main(int argc, char *argv[]) {
     glBindTexture(GL_TEXTURE_2D, colorBuffer);
     glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA32F, WIDTH, HEIGHT);
     
-    glGenBuffers(1, &accelBuffer);
+    glGenBuffers(1, &forceBuffer);
     glGenBuffers(1, &particleBuffer);
     
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, particleBuffer);
     glBufferData(GL_SHADER_STORAGE_BUFFER, particleData.getFullSize(), particleData.getData(), GL_STATIC_DRAW);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, particleBuffer);
     
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, accelBuffer);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, accelData.getFullSize(), accelData.getData(), GL_DYNAMIC_READ);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, accelBuffer);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, forceBuffer);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, forceData.getFullSize(), forceData.getData(), GL_DYNAMIC_READ);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, forceBuffer);
     
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
     
-    initWorld();
+    int particles = 10;
+    if (argc > 1) {
+        char *end;
+        particles = (int)strtol(argv[1], &end, 10);
+        if (*end) particles = 10;
+    }
+    initWorld(particles);
     
     shaderProgram = createShaderProgram(vertSrc, fragSrc);
     computeShader = createShaderProgram(computeSrc);
@@ -338,7 +346,7 @@ int main(int argc, char *argv[]) {
 }
 
 // UNIVERSE FUNCTIONS IMPLEMENTATION
-void initWorld() {
+void initWorld(int particles) {
     long unsigned i, j;
     //int r1, r2;
     int x, y;
@@ -346,7 +354,7 @@ void initWorld() {
     float sumRadii = 2.0f;
     float deltaX, deltaY;
     addParticle(100, 200, 200, 0, 0);
-    for (i = 0; i < 1000; i++) {
+    for (i = 0; i < particles; i++) {
     // r1 = std::rand() % 2 ? 1 : -1;
     // r2 = std::rand() % 2 ? 1 : -1;
         minDist = 0.0f;
@@ -389,8 +397,8 @@ void addParticle(float mass, float x, float y, float vx, float vy) {
     // positionYL.push_back(y);
     velocityXL.push_back(vx);
     velocityYL.push_back(vy);
-    float accel[2] = {0,0};
-    accelData.add(accel);
+    float force[2] = {0,0};
+    forceData.add(force);
     // accelXL.push_back(0);
     // accelYL.push_back(0);
 }
@@ -400,8 +408,8 @@ void updateWorld() {
     long unsigned size = particleData.getSize();
     long unsigned i;
     for(i = 0 ; i < size; ++i) {
-        velocityXL[i] += accelData[i][0] * TIMESTEP;
-        velocityYL[i] += accelData[i][1] * TIMESTEP;
+        velocityXL[i] += (forceData[i][0] / particleData[i][2]) * TIMESTEP;
+        velocityYL[i] += (forceData[i][1] / particleData[i][2]) * TIMESTEP;
         particleData[i][0] += velocityXL[i] * TIMESTEP;
         particleData[i][1] += velocityYL[i] * TIMESTEP;
     }

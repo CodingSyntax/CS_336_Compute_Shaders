@@ -11,11 +11,11 @@ layout(std430, binding = 1) buffer particleApi
     float particles[][3];
 } particleBuffer;
 
-layout(std430, binding = 2) buffer accelApi
+layout(std430, binding = 2) buffer forceApi
 {
     // Should be in the format {accX, accY}
     float accel[][2];
-} accelBuffer;
+} forceBuffer;
 
 
 const float G = 10;
@@ -33,22 +33,31 @@ void main() {
     uint i = gl_GlobalInvocationID.x;
     netAx = 0;
     netAy = 0;
-    for(int j = 0 ; j < size; ++j) {
-        if (j == i) continue;
+    for(uint j = i + 1; j < size; ++j) {
 
         distx = particleBuffer.particles[j][0] - particleBuffer.particles[i][0]; 
         disty = particleBuffer.particles[j][1] - particleBuffer.particles[i][1];
-
+        
         if (sqrt(distx * distx + disty * disty) <= 1) continue; //Prevents division by 0
         dir = atan(disty, distx);
+        
+        //Force = mass * acc
+        // 
 
         A = particleBuffer.particles[j][2] / (distx * distx + disty * disty);
         netAx += A * cos(dir);
         netAy += A * sin(dir);
+        
+        float forceX = particleBuffer.particles[i][2] * A * cos(dir) * G;
+        float forceY = particleBuffer.particles[i][2] * A * sin(dir) * G;
+        forceBuffer.accel[i][0] += forceX;
+        forceBuffer.accel[i][1] += forceY;
+        forceBuffer.accel[j][0] += -forceX;
+        forceBuffer.accel[j][1] += -forceY;
     }
     //Write
-    accelBuffer.accel[i][0] = netAx * G;
-    accelBuffer.accel[i][1] = netAy * G;
+    // accelBuffer.accel[i][0] = netAx * G;
+    // accelBuffer.accel[i][1] = netAy * G;
     
     // vec3 color = vec3(0.0);
     

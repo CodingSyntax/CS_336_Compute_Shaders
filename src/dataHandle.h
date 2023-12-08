@@ -33,6 +33,7 @@ class Data2 {
         unsigned int getFullSize();
         float *getData();
         void add(float f[2]);
+        void zero();
         
         float *operator[](unsigned int index);
 };
