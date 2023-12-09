@@ -7,28 +7,108 @@
 #include <cmath>
 
 #include "dataHandle.h"
-#define GLT_IMPLEMENTATION
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-function"
-#include "gltext.h"
-#pragma GCC diagnostic pop
 
 #define WG_SIZE_X 8
 #define WG_SIZE_Y 8
 
 extern char _binary_src_shaders_fragment_frag_start[];
+extern char _binary_src_shaders_fragment_frag_end[];
+
 extern char _binary_src_shaders_vertex_vert_start[];
+extern char _binary_src_shaders_vertex_vert_end[];
+
+extern char _binary_src_shaders_fragTex_frag_start[];
+extern char _binary_src_shaders_fragTex_frag_end[];
+
+extern char _binary_src_shaders_vertTex_vert_start[];
+extern char _binary_src_shaders_vertTex_vert_end[];
+
 extern char _binary_src_shaders_gravity_comp_start[];
-extern char _binary_src_shaders_color_comp_start[];
+extern char _binary_src_shaders_gravity_comp_end[];
+
+extern char _binary_src_shaders_color1_comp_start[];
+extern char _binary_src_shaders_color1_comp_end[];
+
+extern char _binary_src_shaders_color2_comp_start[];
+extern char _binary_src_shaders_color2_comp_end[];
+
+extern char _binary_src_shaders_color3_comp_start[];
+extern char _binary_src_shaders_color3_comp_end[];
+
+// extern char _binary_src_shaders_raytrace_comp_start[];
+
+char *fragSrc;
+char *vertSrc;
+char *fragTexSrc;
+char *vertTexSrc;
+char *gravitySrc;
+char *color1Src;
+char *color2Src;
+char *color3Src;
+
+void convertBinaryToSrc() {
+    unsigned int size = (unsigned int)(_binary_src_shaders_fragment_frag_end - _binary_src_shaders_fragment_frag_start);
+    fragSrc = (char*)calloc(size / (sizeof(char)), sizeof(char));
+    memcpy(fragSrc, _binary_src_shaders_fragment_frag_start, size);
+    
+    size = (unsigned int)(_binary_src_shaders_vertex_vert_end - _binary_src_shaders_vertex_vert_start);
+    vertSrc = (char*)calloc(size / (sizeof(char)), sizeof(char));
+    memcpy(vertSrc, _binary_src_shaders_vertex_vert_start, size);
+    
+    size = (unsigned int)(_binary_src_shaders_fragTex_frag_end - _binary_src_shaders_fragTex_frag_start);
+    fragTexSrc = (char*)calloc(size / (sizeof(char)), sizeof(char));
+    memcpy(fragTexSrc, _binary_src_shaders_fragTex_frag_start, size);
+    
+    size = (unsigned int)(_binary_src_shaders_vertTex_vert_end - _binary_src_shaders_vertTex_vert_start);
+    vertTexSrc = (char*)calloc(size / (sizeof(char)), sizeof(char));
+    memcpy(vertTexSrc, _binary_src_shaders_vertTex_vert_start, size);
+    
+    size = (unsigned int)(_binary_src_shaders_gravity_comp_end - _binary_src_shaders_gravity_comp_start);
+    gravitySrc = (char*)calloc(size / (sizeof(char)), sizeof(char));
+    memcpy(gravitySrc, _binary_src_shaders_gravity_comp_start, size);
+    
+    size = (unsigned int)(_binary_src_shaders_color1_comp_end - _binary_src_shaders_color1_comp_start);
+    color1Src = (char*)calloc(size / (sizeof(char)), sizeof(char));
+    memcpy(color1Src, _binary_src_shaders_color1_comp_start, size);
+    
+    size = (unsigned int)(_binary_src_shaders_color2_comp_end - _binary_src_shaders_color2_comp_start);
+    color2Src = (char*)calloc(size / (sizeof(char)), sizeof(char));
+    memcpy(color2Src, _binary_src_shaders_color2_comp_start, size);
+    
+    size = (unsigned int)(_binary_src_shaders_color3_comp_end - _binary_src_shaders_color3_comp_start);
+    color3Src = (char*)calloc(size / (sizeof(char)), sizeof(char));
+    memcpy(color3Src, _binary_src_shaders_color3_comp_start, size);
+    
+    // std::cout << "Frag:\n" << fragSrc << std::endl;
+    // std::cout << "Vert:\n" << vertSrc << std::endl;
+    // std::cout << "Grav:\n" << gravitySrc << std::endl;
+    // std::cout << "Color1:\n" << color1Src << std::endl;
+    // std::cout << "Color2:\n" << color2Src << std::endl;
+    // std::cout << "Color3:\n" << color3Src << std::endl;
+    
+}
+
+void freeSrc() {
+    free(fragSrc);
+    free(vertSrc);
+    free(fragTexSrc);
+    free(vertTexSrc);
+    free(gravitySrc);
+    free(color1Src);
+    free(color2Src);
+    free(color3Src);
+}
+
 
 const int WIDTH = 400;
 const int HEIGHT = 400;
+
+int mode = 0;
 
 float massSel = 10;
 
 bool pause = true;
 
-GLTtext *massTxt;
 GLFWwindow* window;
 unsigned int shaderProgram;
 unsigned int computeShader;
@@ -216,25 +296,9 @@ void drawMassText() {
     std::ostringstream strStream;
     strStream << "Gravity Demo - Mass: " << massSel;
     glfwSetWindowTitle(window, strStream.str().c_str());
-    // gltSetText(massTxt, strStream.str().c_str());
-    
-    // gltBeginDraw();
-    
-    // gltColor(1.0f, 1.0f, 1.0f, 1.0f);
-    // // gltDrawText2D(massTxt, 0.0f, 0.0f, 1.0f);
-    // // float view[] = 
-    // // {1, 0, 0, 0,
-    // //  0, 1, 0, 0,
-    // //  0, 0, 1, 0,
-    // //  0, 0, 0, 1};
-    // // gltDrawText3D(massTxt, 0, 0, -1, 1, view, view);
-    // // gltDrawText(massTxt, view);
-    // gltDrawText2DAligned(massTxt, 0, 0, 1, 0, 0);
-    
-    // gltEndDraw();
 }
 
-void draw() {
+void drawGravity() {
     if (!pause) computeGravity();
     drawGravSim();
     drawMassText();
@@ -243,12 +307,120 @@ void draw() {
     glfwPollEvents();
 }
 
+void colorGeneral() {
+    std::cout << "color1" << std::endl;
+    
+    glGenTextures(1, &colorBuffer);
+    glBindTexture(GL_TEXTURE_2D, colorBuffer);
+    glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA32F, WIDTH, HEIGHT);
+    
+    std::vector<float> verts = {
+        -1, 1, 1, 1, -1, -1,
+        -1, -1, 1, 1, 1, -1
+    };
+
+    std::vector<float> texCoords = {
+        0, 1, 1, 1, 0, 0,
+        0, 0, 1, 1, 1, 0
+    };
+    
+    
+    shaderProgram = createShaderProgram(vertTexSrc, fragTexSrc, "vert", "frag");
+    verticesBuffer = createAndLoadBuffer(verts);
+    texCoordsBuffer = createAndLoadBuffer(texCoords);
+    
+    glClearColor(0.f, 0.f, 0.f, 1.0f);
+}
+
+void color1() {
+    std::cout << "color1" << std::endl;
+    colorGeneral();
+    
+    computeShader = createShaderProgram(color1Src, (std::string)"color1");
+    
+    //draw
+    while (!glfwWindowShouldClose(window)) {
+        drawComputeShader();
+    }
+}
+
+void color2() {
+    std::cout << "color2" << std::endl;
+    colorGeneral();
+    
+    computeShader = createShaderProgram(color2Src, (std::string)"color1");
+    
+    //draw
+    while (!glfwWindowShouldClose(window)) {
+        drawComputeShader();
+    }
+}
+
+void color3() {
+    std::cout << "color3" << std::endl;
+    colorGeneral();
+    
+    computeShader = createShaderProgram(color3Src, (std::string)"color1");
+    
+    //draw
+    while (!glfwWindowShouldClose(window)) {
+        drawComputeShader();
+    }
+}
+
+void gravity(int particles) {
+    std::cout << "gravity" << std::endl;
+    // std::cout << _binary_src_shaders_fragment_frag_size << std::endl;
+    // char *fragStart = _binary_src_shaders_fragment_frag_start;
+    // char *vertSrc = _binary_src_shaders_vertex_vert_start;
+    // char *computeSrc = _binary_src_shaders_gravity_comp_start;
+    
+    // std::cout << "Frag:\n" << fragSrc << std::endl;
+    
+    glGenBuffers(1, &forceBuffer);
+    glGenBuffers(1, &particleBuffer);
+    
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, particleBuffer);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, particleData.getFullSize(), particleData.getData(), GL_STATIC_DRAW);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, particleBuffer);
+    
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, forceBuffer);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, forceData.getFullSize(), forceData.getData(), GL_DYNAMIC_READ);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, forceBuffer);
+    
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+    
+    
+    initWorld(particles);
+    
+    shaderProgram = createShaderProgram(vertSrc, fragSrc, "vert", "frag");
+    computeShader = createShaderProgram(gravitySrc, (std::string)"gravity");
+    verticesBuffer = createAndLoadBuffer(verts);
+    glBindBuffer(GL_ARRAY_BUFFER, verticesBuffer);
+    glBufferData(GL_ARRAY_BUFFER, particleData.getFullSize(), particleData.getData(), GL_STATIC_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+  
+    glClearColor(0.f, 0.f, 0.f, 1.0f);
+    glPointSize(3);
+    //draw
+    
+    
+    while (!glfwWindowShouldClose(window)) {
+        //std::cout << positionXL[0] << std::endl;
+        drawGravity();
+        if (!pause) updateWorld();
+        //std::this_thread::sleep_for(timespan);
+    }
+}
+
 int main(int argc, char *argv[]) {
     std::cout << "Starting... " << std::endl;
+    convertBinaryToSrc();
     
-    char *fragSrc = _binary_src_shaders_fragment_frag_start;
-    char *vertSrc = _binary_src_shaders_vertex_vert_start;
-    char *computeSrc = _binary_src_shaders_gravity_comp_start;
+    // char *color2Src = _binary_src_shaders_color2_comp_start;
+    // char *color3Src = _binary_src_shaders_color3_comp_start;
+    // char *raytraceSrc = _binary_src_shaders_raytrace_comp_start;
     // std::cout << "Frag:\n" << p << std::endl;
     
     if (!glfwInit()) {
@@ -276,70 +448,36 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
     
-    if (!gltInit()) {
-        glfwTerminate();
-        std::cerr << "GLT faild to load" << std::endl;
-        exit(EXIT_FAILURE);
-    }
-    
-    massTxt = gltCreateText();
-    gltSetText(massTxt, "Hello");
-    
     std::cout << "Open GL: " << glGetString(GL_VERSION) << std::endl;
     glfwSetKeyCallback(window, keyCallback);
     glfwSetMouseButtonCallback(window, mouseCallback);
     glfwSetScrollCallback(window, scrollCallback);
     
-    glGenTextures(1, &colorBuffer);
-    glBindTexture(GL_TEXTURE_2D, colorBuffer);
-    glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA32F, WIDTH, HEIGHT);
-    
-    glGenBuffers(1, &forceBuffer);
-    glGenBuffers(1, &particleBuffer);
-    
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, particleBuffer);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, particleData.getFullSize(), particleData.getData(), GL_STATIC_DRAW);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, particleBuffer);
-    
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, forceBuffer);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, forceData.getFullSize(), forceData.getData(), GL_DYNAMIC_READ);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, forceBuffer);
-    
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
-    
     int particles = 10;
     if (argc > 1) {
         char *end;
-        particles = (int)strtol(argv[1], &end, 10);
-        if (*end) particles = 10;
-    }
-    initWorld(particles);
+        
+        if (strcmp(argv[1], "color1") == 0) color1();
+        else if (strcmp(argv[1], "color2") == 0) color2();
+        else if (strcmp(argv[1], "color3") == 0) color3();
+        else if (strcmp(argv[1], "gravity") == 0) {
+            if (argc > 2) {
+                particles = (int)strtol(argv[2], &end, 10);
+                if (*end) particles = 10;
+            }
+            gravity(particles);
+        } else { //default
+            particles = (int)strtol(argv[1], &end, 10);
+            if (*end) particles = 10;
+            gravity(particles);
+        }
+    } else gravity(particles);
     
-    shaderProgram = createShaderProgram(vertSrc, fragSrc);
-    computeShader = createShaderProgram(computeSrc);
-    verticesBuffer = createAndLoadBuffer(verts);
-    glBindBuffer(GL_ARRAY_BUFFER, verticesBuffer);
-    glBufferData(GL_ARRAY_BUFFER, particleData.getFullSize(), particleData.getData(), GL_STATIC_DRAW);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-  
-    glClearColor(0.f, 0.f, 0.f, 1.0f);
-    glPointSize(3);
-    //draw
-    
-    
-    while (!glfwWindowShouldClose(window)) {
-        //std::cout << positionXL[0] << std::endl;
-        draw();
-        if (!pause) updateWorld();
-        //std::this_thread::sleep_for(timespan);
-    }
-    
-    gltDeleteText(massTxt);
-    gltTerminate();
     glfwDestroyWindow(window);
     glDeleteProgram(shaderProgram);
     glfwTerminate();
+    
+    freeSrc();
     
     std::cout << "Exit Success" << std::endl;
     exit(EXIT_SUCCESS);

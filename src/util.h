@@ -4,7 +4,9 @@
 
 unsigned int loadAndCompileShader(const char *shaderSrc, unsigned int moduleType);
 
+unsigned int createShaderProgram(const char *vertexSrc, const char *fragmentSrc, std::string vName, std::string fName);
 unsigned int createShaderProgram(const char *vertexSrc, const char *fragmentSrc);
+unsigned int createShaderProgram(const char *computeSrc, std::string name);
 unsigned int createShaderProgram(const char *computeSrc);
 
 template <typename T>

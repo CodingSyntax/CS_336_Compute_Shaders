@@ -1,6 +1,6 @@
 #include "util.h"
 
-unsigned int loadAndCompileShader(const char *shaderSrc, unsigned int moduleType) {    
+unsigned int loadAndCompileShader(const char *shaderSrc, unsigned int moduleType, std::string name) {    
     unsigned int shaderModule = glCreateShader(moduleType);
     glShaderSource(shaderModule, 1, &shaderSrc, NULL);
     glCompileShader(shaderModule);
@@ -11,16 +11,20 @@ unsigned int loadAndCompileShader(const char *shaderSrc, unsigned int moduleType
     if (!success) {
         char errorLog[1024];
         glGetShaderInfoLog(shaderModule, 1024, NULL, errorLog);
-        std::cerr << "Shader Module compilation error:\n" << errorLog << std::endl;
+        std::cerr << "Shader Module compilation error: (" << name << ")\n" << errorLog << std::endl;
     }
     
     return shaderModule;
 }
 
-unsigned int createShaderProgram(const char *vertexSrc, const char *fragmentSrc) {
+unsigned int loadAndCompileShader(const char *shaderSrc, unsigned int moduleType) {    
+    return loadAndCompileShader(shaderSrc, moduleType, "unknown");
+}
+
+unsigned int createShaderProgram(const char *vertexSrc, const char *fragmentSrc, std::string vName, std::string fName) {
     std::vector<unsigned int> modules;
-    modules.push_back(loadAndCompileShader(vertexSrc, GL_VERTEX_SHADER));
-    modules.push_back(loadAndCompileShader(fragmentSrc, GL_FRAGMENT_SHADER));
+    modules.push_back(loadAndCompileShader(vertexSrc, GL_VERTEX_SHADER, vName));
+    modules.push_back(loadAndCompileShader(fragmentSrc, GL_FRAGMENT_SHADER, fName));
     
     unsigned int shader = glCreateProgram();
     for (unsigned int shaderModule : modules) {
@@ -34,7 +38,7 @@ unsigned int createShaderProgram(const char *vertexSrc, const char *fragmentSrc)
     if (!success) {
         char errorLog[1024];
         glGetShaderInfoLog(shader, 1024, NULL, errorLog);
-        std::cerr << "Shader linking error:\n" << errorLog << std::endl;
+        std::cerr << "Shader linking error: (" << vName << "," << fName << ")\n" << errorLog << std::endl;
     }
     
     for (unsigned int shaderModule : modules) {
@@ -44,8 +48,12 @@ unsigned int createShaderProgram(const char *vertexSrc, const char *fragmentSrc)
     return shader;
 }
 
-unsigned int createShaderProgram(const char *computeSrc) {
-    unsigned int module = loadAndCompileShader(computeSrc, GL_COMPUTE_SHADER);
+unsigned int createShaderProgram(const char *vertexSrc, const char *fragmentSrc) {
+    return createShaderProgram(vertexSrc, fragmentSrc, "unknown", "unknown");
+}
+
+unsigned int createShaderProgram(const char *computeSrc, std::string name) {
+    unsigned int module = loadAndCompileShader(computeSrc, GL_COMPUTE_SHADER, name);
     
     unsigned int shader = glCreateProgram();
     glAttachShader(shader, module);
@@ -56,12 +64,16 @@ unsigned int createShaderProgram(const char *computeSrc) {
     if (!success) {
         char errorLog[1024];
         glGetShaderInfoLog(shader, 1024, NULL, errorLog);
-        std::cerr << "Shader linking error:\n" << errorLog << std::endl;
+        std::cerr << "Shader linking error: (" << name << ")\n" << errorLog << std::endl;
     }
     
     glDeleteShader(module);
     
     return shader;
+}
+
+unsigned int createShaderProgram(const char *computeSrc) {
+    return createShaderProgram(computeSrc, "unknown");
 }
 
 unsigned int createAndLoadIndexBuffer(std::vector<unsigned int> data) {
