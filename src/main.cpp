@@ -35,6 +35,9 @@ extern char _binary_src_shaders_color2_comp_end[];
 extern char _binary_src_shaders_color3_comp_start[];
 extern char _binary_src_shaders_color3_comp_end[];
 
+extern char _binary_src_shaders_color4_comp_start[];
+extern char _binary_src_shaders_color4_comp_end[];
+
 // extern char _binary_src_shaders_raytrace_comp_start[];
 
 char *fragSrc;
@@ -45,6 +48,7 @@ char *gravitySrc;
 char *color1Src;
 char *color2Src;
 char *color3Src;
+char *color4Src;
 
 void convertBinaryToSrc() {
     unsigned int size = (unsigned int)(_binary_src_shaders_fragment_frag_end - _binary_src_shaders_fragment_frag_start);
@@ -79,6 +83,9 @@ void convertBinaryToSrc() {
     color3Src = (char*)calloc(size / (sizeof(char)), sizeof(char));
     memcpy(color3Src, _binary_src_shaders_color3_comp_start, size);
     
+    size = (unsigned int)(_binary_src_shaders_color4_comp_end - _binary_src_shaders_color4_comp_start);
+    color4Src = (char*)calloc(size / (sizeof(char)), sizeof(char));
+    memcpy(color4Src, _binary_src_shaders_color4_comp_start, size);
     // std::cout << "Frag:\n" << fragSrc << std::endl;
     // std::cout << "Vert:\n" << vertSrc << std::endl;
     // std::cout << "Grav:\n" << gravitySrc << std::endl;
@@ -97,6 +104,7 @@ void freeSrc() {
     free(color1Src);
     free(color2Src);
     free(color3Src);
+    free(color4Src);
 }
 
 
@@ -142,7 +150,7 @@ const float TIMESTEP = 0.02;
 
 // UNIVERSE FUNCTIONS (USED IN MAIN, DRAW, AND UPDATE)
 
-void initWorld(int particles);
+void initWorld(unsigned int particles);
 void updateWorld();
 void addParticle(float mass, float x, float y, float vx, float vy);
 void renderParticle();
@@ -226,10 +234,8 @@ void drawComputeShader() {
     glClear(GL_COLOR_BUFFER_BIT);
     glUseProgram(computeShader);
     
-    
-    
     glBindImageTexture(0, colorBuffer, 0, false, 0, GL_WRITE_ONLY, GL_RGBA32F);
-    //floor
+    //ceiling (the amount of workgroups needed)
     glDispatchCompute((width + WG_SIZE_X - 1) / WG_SIZE_X, (height + WG_SIZE_Y - 1) / WG_SIZE_Y, 1);
     glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
     
@@ -308,8 +314,6 @@ void drawGravity() {
 }
 
 void colorGeneral() {
-    std::cout << "color1" << std::endl;
-    
     glGenTextures(1, &colorBuffer);
     glBindTexture(GL_TEXTURE_2D, colorBuffer);
     glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA32F, WIDTH, HEIGHT);
@@ -348,7 +352,7 @@ void color2() {
     std::cout << "color2" << std::endl;
     colorGeneral();
     
-    computeShader = createShaderProgram(color2Src, (std::string)"color1");
+    computeShader = createShaderProgram(color2Src, (std::string)"color2");
     
     //draw
     while (!glfwWindowShouldClose(window)) {
@@ -360,7 +364,7 @@ void color3() {
     std::cout << "color3" << std::endl;
     colorGeneral();
     
-    computeShader = createShaderProgram(color3Src, (std::string)"color1");
+    computeShader = createShaderProgram(color3Src, (std::string)"color3");
     
     //draw
     while (!glfwWindowShouldClose(window)) {
@@ -368,7 +372,19 @@ void color3() {
     }
 }
 
-void gravity(int particles) {
+void color4() {
+    std::cout << "color4" << std::endl;
+    colorGeneral();
+    
+    computeShader = createShaderProgram(color4Src, (std::string)"color4");
+    
+    //draw
+    while (!glfwWindowShouldClose(window)) {
+        drawComputeShader();
+    }
+}
+
+void gravity(unsigned int particles) {
     std::cout << "gravity" << std::endl;
     // std::cout << _binary_src_shaders_fragment_frag_size << std::endl;
     // char *fragStart = _binary_src_shaders_fragment_frag_start;
@@ -453,13 +469,14 @@ int main(int argc, char *argv[]) {
     glfwSetMouseButtonCallback(window, mouseCallback);
     glfwSetScrollCallback(window, scrollCallback);
     
-    int particles = 10;
+    unsigned int particles = 10;
     if (argc > 1) {
         char *end;
         
         if (strcmp(argv[1], "color1") == 0) color1();
         else if (strcmp(argv[1], "color2") == 0) color2();
         else if (strcmp(argv[1], "color3") == 0) color3();
+        else if (strcmp(argv[1], "color4") == 0) color4();
         else if (strcmp(argv[1], "gravity") == 0) {
             if (argc > 2) {
                 particles = (int)strtol(argv[2], &end, 10);
@@ -484,7 +501,7 @@ int main(int argc, char *argv[]) {
 }
 
 // UNIVERSE FUNCTIONS IMPLEMENTATION
-void initWorld(int particles) {
+void initWorld(unsigned int particles) {
     long unsigned i, j;
     //int r1, r2;
     int x, y;
@@ -497,8 +514,8 @@ void initWorld(int particles) {
     // r2 = std::rand() % 2 ? 1 : -1;
         minDist = 0.0f;
         while(minDist < sumRadii) {
-            x = (int) (std::rand() % 390) + 10;
-            y = (int) (std::rand() % 390) + 10;
+            x = (int) (std::rand() % 400);
+            y = (int) (std::rand() % 400);
             for (j = 0; j < particleData.getSize(); ++j) {
                 deltaX = particleData[j][0] - x;
                 deltaY = particleData[j][1] - y;

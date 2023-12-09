@@ -2,19 +2,25 @@
 
 //Workgroup size
 layout(local_size_x = 8, local_size_y = 8) in;
-
+//Normal attributes go here
+//compute shader output
 layout(rgba32f, binding = 0) uniform image2D colorBuffer;
 
 
 void main() {
-    
+    //global variables to know where in the data you are
     ivec2 pixelPos = ivec2(gl_GlobalInvocationID.xy);
-    ivec2 screenSize = imageSize(colorBuffer);
-    if (pixelPos.x >= screenSize.x || pixelPos.y >= screenSize.y) return;
     
-    float apectRatio = float(screenSize.y)/screenSize.x;
+    vec3 color;
     
-    vec3 color = vec3(gl_GlobalInvocationID.x / float(screenSize.x), gl_GlobalInvocationID.y / float(screenSize.y), 0);
+    if (gl_GlobalInvocationID.x == 200) color = vec3(0.5,0,0);
+    else if (gl_GlobalInvocationID.x < 200) color = vec3(0,0.5,0);
+    else color = vec3(0,0,0.5);
+    
+    // Local, where you are in current workgroup
+    if (gl_LocalInvocationID.x == 4) color += vec3(0.5,0,0);
+    else if (gl_LocalInvocationID.x < 4) color += vec3(0,0.5,0);
+    else color += vec3(0,0,0.5);
     
     //write
     imageStore(colorBuffer, pixelPos, vec4(color, 1.0));

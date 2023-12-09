@@ -2,16 +2,17 @@
 
 //Workgroup size
 layout(local_size_x = 8, local_size_y = 8) in;
+
 layout(rgba32f, binding = 0) uniform image2D colorBuffer;
 
 
 void main() {
-    ivec2 pixelPos = ivec2(gl_GlobalInvocationID.xy);
-    vec3 color;
     
-    if (gl_GlobalInvocationID.x == 200) color = vec3(1,0,0);
-    else if (gl_GlobalInvocationID.x < 200) color = vec3(0,1,0);
-    else color = vec3(0,0,1);
+    ivec2 pixelPos = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 screenSize = imageSize(colorBuffer);
+    if (pixelPos.x >= screenSize.x || pixelPos.y >= screenSize.y) return;
+    
+    vec3 color = vec3(gl_GlobalInvocationID.x / float(screenSize.x), gl_GlobalInvocationID.y / float(screenSize.y), 0);
     
     //write
     imageStore(colorBuffer, pixelPos, vec4(color, 1.0));
