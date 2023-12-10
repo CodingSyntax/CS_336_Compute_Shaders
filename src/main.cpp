@@ -12,14 +12,18 @@
 
 #define MODE_GRAV 0
 #define MODE_GRAV_C 1
-#define MODE_COLOR 2
+#define MODE_GRAV_C2 2
+#define MODE_COLOR 3
+#define MODE_MAG 4
 
 #define WG_SIZE_X 8
 #define WG_SIZE_Y 8
 
 extern char _binary_src_shaders_fragment_frag_start[];
+extern char _binary_src_shaders_velColorF_frag_start[];
 extern char _binary_src_shaders_fragmentColor_frag_start[];
 extern char _binary_src_shaders_vertex_vert_start[];
+extern char _binary_src_shaders_velColorV_vert_start[];
 extern char _binary_src_shaders_vertexColor_vert_start[];
 extern char _binary_src_shaders_fragTex_frag_start[];
 extern char _binary_src_shaders_vertTex_vert_start[];
@@ -36,6 +40,8 @@ extern char _binary_src_shaders_color4_comp_start[];
 
 char *fragSrc;
 char *vertSrc;
+char *velColorVSrc;
+char *velColorFSrc;
 char *fragColorSrc;
 char *vertColorSrc;
 char *fragTexSrc;
@@ -67,8 +73,10 @@ void convert(char binary[], char *&src) {
 
 void convertBinaryToSrc() {
     convert(_binary_src_shaders_fragment_frag_start, fragSrc);
+    convert(_binary_src_shaders_velColorF_frag_start, velColorFSrc);
     convert(_binary_src_shaders_fragmentColor_frag_start, fragColorSrc);
     convert(_binary_src_shaders_vertex_vert_start, vertSrc);
+    convert(_binary_src_shaders_velColorV_vert_start, velColorVSrc);
     convert(_binary_src_shaders_vertexColor_vert_start, vertColorSrc);
     convert(_binary_src_shaders_fragTex_frag_start, fragTexSrc);
     convert(_binary_src_shaders_vertTex_vert_start, vertTexSrc);
@@ -95,6 +103,8 @@ void convertBinaryToSrc() {
 void freeSrc() {
     free(fragSrc);
     free(vertSrc);
+    free(velColorFSrc);
+    free(velColorVSrc);
     free(fragColorSrc);
     free(vertColorSrc);
     free(fragTexSrc);
@@ -113,6 +123,11 @@ void freeSrc() {
 
 #define WIDTH 800
 #define HEIGHT 800
+
+float zoom = log(WIDTH / 2) / log(1.01);
+
+float panX = 0;
+float panY = 0;
 
 int mode = 0;
 
@@ -143,6 +158,7 @@ GLint textureSamplerLocation;
 Data3 particleData;
 Data2 forceData;
 Data5 moreParticleData;
+Data2 velocity;
 std::vector<float> velocityXL;
 std::vector<float> velocityYL;
 
@@ -167,10 +183,17 @@ void updateWorldC();
 void updateWorldC2();
 void initWorldM(unsigned int particles);
 void addParticle(float mass, float x, float y, float vx, float vy);
+void addParticleM(float mass, float x, float y, float vx, float vy);
 void addParticleC(float mass, float x, float y, float vx, float vy);
 void addParticleC2(float mass, float x, float y, float vx, float vy);
 void renderParticle();
 void calculateCollision2();
+
+void resetCam() {
+    zoom = log(WIDTH / 2) / log(1.01);
+    panX = 0;
+    panY = 0;
+}
 
 void pauseSim() {
     pause = !pause;
@@ -186,6 +209,8 @@ void createMass(GLFWwindow* window) {
     double thisY = HEIGHT - ((y/height) * HEIGHT);
     if (mode == MODE_GRAV) addParticle(massSel, thisX, thisY, 0, 0);
     if (mode == MODE_GRAV_C) addParticleC(massSel, thisX, thisY, 0, 0);
+    if (mode == MODE_GRAV_C2) addParticleC2(massSel, thisX, thisY, 0, 0);
+    if (mode == MODE_MAG) addParticleM(massSel, thisX, thisY, 0, 0);
     std::cout << "(" << thisX << "," << thisY << ")" << std::endl;
 }
 
@@ -210,15 +235,42 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
         else if (mods == (GLFW_MOD_SHIFT | GLFW_MOD_CONTROL | GLFW_MOD_ALT)) massSel -= 0.001f;
         else massSel--;
     }
+    if (key == GLFW_KEY_R && (action == GLFW_PRESS)) {
+        resetCam();
+    }
 }
+
+bool middlePressed = false;
 
 void mouseCallback(GLFWwindow* window, int button, int action, int mods) {
     if (button == GLFW_MOUSE_BUTTON_1 && action == GLFW_PRESS)
         createMass(window); //TODO: change to right click, and allow left click to pan the screen?
+    if (button == GLFW_MOUSE_BUTTON_3 && action == GLFW_PRESS)
+        middlePressed = true;
+    if (button == GLFW_MOUSE_BUTTON_3 && action == GLFW_RELEASE)
+        middlePressed = false;
+}
+
+double lastX = -1, lastY;
+
+static void cursorPosCallback(GLFWwindow* window, double xpos, double ypos) {
+    if (middlePressed) {
+        if (lastX == -1) {
+            lastX = xpos;
+            lastY = ypos;
+        }
+        panX += xpos - lastX;
+        panY -= ypos - lastY;
+        lastX = xpos;
+        lastY = ypos;
+    } else {
+        lastX = -1;
+    }
 }
 
 void scrollCallback(GLFWwindow* window, double xoffset, double yoffset) {
-    massSel += yoffset;
+    // massSel += yoffset; //zoom
+    zoom -= yoffset * 10;
 }
 
 void drawGravSim() {
@@ -231,14 +283,20 @@ void drawGravSim() {
     // std::cout << "use" << std::endl;
 
     unsigned int pos = glGetAttribLocation(shaderProgram, "a_Position");
+    unsigned int color = glGetAttribLocation(shaderProgram, "a_Color");
     // std::cout << pos << std::endl;
 
     glEnableVertexAttribArray(pos);
+    glEnableVertexAttribArray(color);
     // std::cout << "attr" << std::endl;
     
     glBindBuffer(GL_ARRAY_BUFFER, verticesBuffer);
-    glVertexAttribPointer(pos, 2, GL_FLOAT, false, sizeof(float) * 3, 0);
+    glVertexAttribPointer(pos, 3, GL_FLOAT, false, 0, 0);
+    glBindBuffer(GL_ARRAY_BUFFER, colorBuffer);
+    glVertexAttribPointer(color, 2, GL_FLOAT, false, 0, 0);
     glUniform2f(glGetUniformLocation(shaderProgram, "scale"), WIDTH, HEIGHT);
+    glUniform1f(glGetUniformLocation(shaderProgram, "zoom"), zoom);
+    glUniform2f(glGetUniformLocation(shaderProgram, "transform"), panX, panY);
     // std::cout << "b4draw" << std::endl;
     
     glBindBuffer(GL_ARRAY_BUFFER, GL_NONE);
@@ -269,6 +327,8 @@ void drawMagSim() {
     glBindBuffer(GL_ARRAY_BUFFER, verticesBuffer);
     glVertexAttribPointer(pos, 3, GL_FLOAT, false, 0, 0);
     glUniform2f(glGetUniformLocation(shaderProgram, "scale"), WIDTH, HEIGHT);
+    glUniform1f(glGetUniformLocation(shaderProgram, "zoom"), zoom);
+    glUniform2f(glGetUniformLocation(shaderProgram, "transform"), panX, panY);
     // std::cout << "b4draw" << std::endl;
     
     glBindBuffer(GL_ARRAY_BUFFER, GL_NONE);
@@ -296,6 +356,8 @@ void drawGravCSim() {
     glBindBuffer(GL_ARRAY_BUFFER, verticesBuffer);
     glVertexAttribPointer(pos, 2, GL_FLOAT, false, sizeof(float) * 5, 0);
     glUniform2f(glGetUniformLocation(shaderProgram, "scale"), WIDTH, HEIGHT);
+    glUniform1f(glGetUniformLocation(shaderProgram, "zoom"), zoom);
+    glUniform2f(glGetUniformLocation(shaderProgram, "transform"), panX, panY);
     
     glBindBuffer(GL_ARRAY_BUFFER, GL_NONE);
     
@@ -579,11 +641,16 @@ void gravity(unsigned int particles, unsigned int gravMode) {
     
     initWorld(particles, gravMode);
     
-    shaderProgram = createShaderProgram(vertSrc, fragSrc, "vert", "frag");
+    shaderProgram = createShaderProgram(velColorVSrc, velColorFSrc, "velColorV", "velColorF");
     computeShader = createShaderProgram(gravitySrc, (std::string)"gravity");
     verticesBuffer = createAndLoadBuffer(verts);
     glBindBuffer(GL_ARRAY_BUFFER, verticesBuffer);
     glBufferData(GL_ARRAY_BUFFER, particleData.getFullSize(), particleData.getData(), GL_STATIC_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    
+    colorBuffer = createAndLoadBuffer(verts);
+    glBindBuffer(GL_ARRAY_BUFFER, colorBuffer);
+    glBufferData(GL_ARRAY_BUFFER, velocity.getFullSize(), velocity.getData(), GL_STATIC_DRAW);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
   
@@ -762,9 +829,11 @@ int main(int argc, char *argv[]) {
     glfwSetKeyCallback(window, keyCallback);
     glfwSetMouseButtonCallback(window, mouseCallback);
     glfwSetScrollCallback(window, scrollCallback);
+    glfwSetCursorPosCallback(window, cursorPosCallback);
     
     unsigned int particles = 10;
     unsigned int gravMode = 0;
+    mode = MODE_GRAV_C2;
     if (argc > 1) {
         char *end;
         
@@ -799,14 +868,14 @@ int main(int argc, char *argv[]) {
             }
             gravityC(particles);
         } else if (strcmp(argv[1], "gravityC2") == 0) {
-            mode = MODE_GRAV;
+            mode = MODE_GRAV_C2;
             if (argc > 2) {
                 particles = (int)strtol(argv[2], &end, 10);
                 if (*end) particles = 10;
             }
             gravityC2(particles);
         } else if (strcmp(argv[1], "magnet") == 0) {
-            mode = MODE_GRAV;
+            mode = MODE_MAG;
             if (argc > 2) {
                 particles = (int)strtol(argv[2], &end, 10);
                 if (*end) particles = 10;
@@ -828,17 +897,16 @@ int main(int argc, char *argv[]) {
     std::cout << "Exit Success" << std::endl;
     exit(EXIT_SUCCESS);
 }
-const int galaxy = 1;
 // UNIVERSE FUNCTIONS IMPLEMENTATION
 void initWorld(unsigned int particles, unsigned int mode) {
-    long unsigned i, j;
+    long unsigned i;
     //int r1, r2;
     int x, y;
     // float dist, minDist = 0.0f;
-    float sumRadii = 2.0f;
+    // float sumRadii = 2.0f;
     // float deltaX, deltaY;
     
-    if (mode == galaxy) {
+    if (mode == 3) {
         // float radius = 200;
         float mass = 2000000;
         addParticle(mass, WIDTH / 2, HEIGHT / 2, 0, 0);
@@ -885,7 +953,7 @@ void initWorld(unsigned int particles, unsigned int mode) {
         }
     }
     
-    if (mode == 3) {
+    if (mode == 1) {
         addParticle(200, WIDTH / 2, HEIGHT / 2, 0, 0);
         for (i = 0; i < particles; i++) {
         // r1 = std::rand() % 2 ? 1 : -1;
@@ -945,8 +1013,8 @@ void initWorldC(unsigned int particles) {
     // r2 = std::rand() % 2 ? 1 : -1;
         minDist = 0.0f;
         while(minDist < sumRadii) {
-            x = (int) (std::rand() % 400);
-            y = (int) (std::rand() % 400);
+            x = (int) (std::rand() % WIDTH);
+            y = (int) (std::rand() % HEIGHT);
             for (j = 0; j < moreParticleData.getSize(); ++j) {
                 deltaX = moreParticleData[j][0] - x;
                 deltaY = moreParticleData[j][1] - y;
@@ -960,14 +1028,14 @@ void initWorldC(unsigned int particles) {
 }
 
 void initWorldM(unsigned int particles) {
-    long unsigned i, j;
+    long unsigned i;
     //int r1, r2;
     int x, y;
     // float dist, minDist = 0.0f;
-    float sumRadii = 2.0f;
+    // float sumRadii = 2.0f;
     // float deltaX, deltaY;
     
-    addParticle(200, WIDTH / 2, HEIGHT / 2, 0, 0);
+    addParticleM(200, WIDTH / 2, HEIGHT / 2, 0, 0);
     for (i = 0; i < particles; i++) {
     // r1 = std::rand() % 2 ? 1 : -1;
     // r2 = std::rand() % 2 ? 1 : -1;
@@ -977,7 +1045,7 @@ void initWorldM(unsigned int particles) {
         //   std::cout << minDist << std::endl;
         // float mass = (std::rand() % 800 - 400);
         // std::cout << mass << std::endl;
-        addParticle(x < 400 ? -100 : 100, x, y, 0, 0);
+        addParticleM(x < 400 ? -100 : 100, x, y, 0, 0);
     }
 }
 
@@ -994,8 +1062,8 @@ void initWorldC2(unsigned int particles) {
     // r2 = std::rand() % 2 ? 1 : -1;
         minDist = 0.0f;
         while(minDist < sumRadii) {
-            x = (int) (std::rand() % 400);
-            y = (int) (std::rand() % 400);
+            x = (int) (std::rand() % WIDTH);
+            y = (int) (std::rand() % HEIGHT);
             for (j = 0; j < particleData.getSize(); ++j) {
                 deltaX = particleData[j][0] - x;
                 deltaY = particleData[j][1] - y;
@@ -1009,6 +1077,25 @@ void initWorldC2(unsigned int particles) {
 }
 
 void addParticle(float mass, float x, float y, float vx, float vy) {
+    float data[3] = {x, y, mass};
+    particleData.add(data);
+    verts.push_back(x/WIDTH);
+    verts.push_back(y/HEIGHT);
+    
+    // massL.push_back(mass);
+    // positionXL.push_back(x);
+    // positionYL.push_back(y);
+    float v[2] = {vx, vy};
+    velocity.add(v);
+    // velocityXL.push_back(vx);
+    // velocityYL.push_back(vy);
+    float force[2] = {0,0};
+    forceData.add(force);
+    // accelXL.push_back(0);
+    // accelYL.push_back(0);
+}
+
+void addParticleM(float mass, float x, float y, float vx, float vy) {
     float data[3] = {x, y, mass};
     particleData.add(data);
     verts.push_back(x/WIDTH);
@@ -1069,14 +1156,18 @@ void updateWorld() {
     long unsigned size = particleData.getSize();
     long unsigned i;
     for(i = 0 ; i < size; ++i) {
-        velocityXL[i] += (forceData[i][0] / particleData[i][2]) * TIMESTEP;
-        velocityYL[i] += (forceData[i][1] / particleData[i][2]) * TIMESTEP;
-        particleData[i][0] += velocityXL[i] * TIMESTEP;
-        particleData[i][1] += velocityYL[i] * TIMESTEP;
+        velocity[i][0] += (forceData[i][0] / particleData[i][2]) * TIMESTEP;
+        velocity[i][1] += (forceData[i][1] / particleData[i][2]) * TIMESTEP;
+        particleData[i][0] += velocity[i][0] * TIMESTEP;
+        particleData[i][1] += velocity[i][1] * TIMESTEP;
     }
     
     glBindBuffer(GL_ARRAY_BUFFER, verticesBuffer);
     glBufferData(GL_ARRAY_BUFFER, particleData.getFullSize(), particleData.getData(), GL_STATIC_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    
+    glBindBuffer(GL_ARRAY_BUFFER, colorBuffer);
+    glBufferData(GL_ARRAY_BUFFER, velocity.getFullSize(), velocity.getData(), GL_STATIC_DRAW);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     
     // for (int i = 0; i < particleData.getSize(); i++) {

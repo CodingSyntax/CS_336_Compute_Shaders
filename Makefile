@@ -11,7 +11,7 @@ LDFLAGS = -Llibs -lOpenGL32 -lglfw3 -lm -lgdi32
 
 BIN = Program
 FILES = main glad util dataHandle
-EMBED = shaders/fragment shaders/vertex shaders/fragmentColor shaders/vertexColor shaders/fragTex shaders/vertTex shaders/gravity shaders/magnetism shaders/gravityC2 shaders/gravityCollide shaders/collisions shaders/color1 shaders/color2 shaders/color3 shaders/color4
+EMBED = shaders/fragment shaders/vertex shaders/velColorV shaders/velColorF shaders/fragmentColor shaders/vertexColor shaders/fragTex shaders/vertTex shaders/gravity shaders/magnetism shaders/gravityC2 shaders/gravityCollide shaders/collisions shaders/color1 shaders/color2 shaders/color3 shaders/color4
 
 OBJS = $(patsubst %, out/%.o, $(FILES))
 PROD = $(patsubst %, out/%.prod, $(FILES))

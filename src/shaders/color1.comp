@@ -9,8 +9,8 @@ void main() {
     ivec2 pixelPos = ivec2(gl_GlobalInvocationID.xy);
     vec3 color;
     
-    if (gl_GlobalInvocationID.x == 200) color = vec3(1,0,0);
-    else if (gl_GlobalInvocationID.x < 200) color = vec3(0,1,0);
+    if (gl_GlobalInvocationID.x == 400) color = vec3(1,0,0);
+    else if (gl_GlobalInvocationID.x < 400) color = vec3(0,1,0);
     else color = vec3(0,0,1);
     
     //write

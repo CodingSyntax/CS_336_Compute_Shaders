@@ -36,7 +36,7 @@ int Data::checkAdd() {
         actualSize *= 2;
         setList();
         memcpy(list, oldList, oldSize * sizeof(float) * args);
-        std::cout << args << std::endl;
+        // std::cout << args << std::endl;
         free(oldList);
     }
     return (size - 1) * args;
