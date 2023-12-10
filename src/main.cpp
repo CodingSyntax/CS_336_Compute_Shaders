@@ -11,8 +11,8 @@
 extern char _binary_src_shaders_fragment_frag_start[];
 extern char _binary_src_shaders_vertex_vert_start[];
 
-const int WIDTH = 400;
-const int HEIGHT = 400;
+const int WIDTH = 800;
+const int HEIGHT = 800;
 
 GLFWwindow* window;
 unsigned int shaderProgram;
@@ -42,7 +42,7 @@ std::vector<bool> collision;
 std::vector<float> massL;
 
 const float G = 10.0f;
-const float TIMESTEP = 0.01f;
+const float TIMESTEP = 0.005f;
 const float sumRadii = 10.0f;
 const float eccentricity = 0.8f;
 
@@ -199,9 +199,9 @@ void initWorld() {
     float dist, minDist = 0.0f;
     float deltaX, deltaY;
 
-    addParticle(300, 200, 200, 0, 0);
+    addParticle(100, 200, 200, 0, 0);
     // addParticle(100, 150, 286.6025, 0, 0);
-    addParticle(300, 100, 200, 0, 0);
+   // addParticle(300, 100, 200, 0, 0);
     for (i = 0; i < 300; i++) {
     // r1 = std::rand() % 2 ? 1 : -1;
     // r2 = std::rand() % 2 ? 1 : -1;
@@ -284,16 +284,24 @@ class CollisionEvent {
         unsigned long primary, secondary;
         bool isValid;
         double time;
-        double b;
         double uDx, uDy;
+        double rVx, rVy;
+        double fpvx, fpvy, fsvx, fsvy;
 
-        CollisionEvent(unsigned long primary, unsigned long secondary, double time, double b, double uDx, double uDy) {
+        CollisionEvent(unsigned long primary, unsigned long secondary, double time, 
+                    double fpvx, double fpvy, double fsvx, double fsvy,
+                    double rVx, double rVy, double uDx, double uDy) {
             this->primary = primary;
             this->secondary = secondary;
             this->time = time;
-            this->b = b;
+            this->rVx = rVx;
+            this->rVy = rVy;
             this->uDx = uDx;
             this->uDy = uDy;
+            this->fpvx = fpvx;
+            this->fpvy = fpvy;
+            this->fsvx = fsvx;
+            this->fsvy = fsvy;
             this->isValid = true;
         }
 
@@ -348,7 +356,7 @@ void doCollisionDetection(long unsigned int primary, long unsigned int secondary
             t = (- b - sqrt(d)) / relativeVelocitySq;
 
             if (t <= TIMESTEP) {
-                CollisionEvent* ct = new CollisionEvent(primary, secondary, t, b, distX / dist, distY / dist);
+                CollisionEvent* ct = new CollisionEvent(primary, secondary, t, fpvx, fpvy, fsvx, fsvy, relativeVelocityX, relativeVelocityY, distX / dist, distY / dist);
                 collisionPriority.push(ct);
                 collisionEventMap[uniquePairingHash(primary, secondary)] = ct;
             }
@@ -361,7 +369,7 @@ void calculateCollision2() {
 
     float sumMass;
     long unsigned i, j;
-    double dt;
+    double dt, b, distX, distY, dist, uDx, uDy;
 
     for (i = 0; i < massL.size(); ++i) {
         for (j = i + 1; j < massL.size(); ++j) {
@@ -381,29 +389,45 @@ void calculateCollision2() {
             s = ct->secondary;
             sumMass = massL[s] + massL[p];
             
-            positionXL[p] += velocityXL[p] * ct->time;
-            positionYL[p] += velocityYL[p] * ct->time;
-            positionXL[s] += velocityXL[s] * ct->time;
-            positionYL[s] += velocityYL[s] * ct->time;
-            // std::cout << "af p[" << p << "]: " << positionXL[p] << " | p[" << s << "]: " << positionXL[s] <<  " ct: "<< ct->time << std::endl;
- 
+            positionXL[p] += ct->fpvx * ct->time;
+            positionYL[p] += ct->fpvy * ct->time;
+            positionXL[s] += ct->fsvx * ct->time;
+            positionYL[s] += ct->fsvy * ct->time;
+
+
             // std::cout << "b {} " << ct->b << std::endl;
-           
+            distX = positionXL[s] - positionXL[p];
+            distY = positionYL[s] - positionYL[p];
+            dist = sqrt(distX * distX + distY * distY);
+            if (dist - sumRadii > 0.001) {
+                std::cout << "af p[" << p << "]: " << positionXL[p] << " | p[" << s << "]: " << positionXL[s] <<  " ct: "<< ct->time << std::endl;
+            } 
+
+            uDx = distX / dist;
+            uDy = distY / dist;
+
+            b = ct->rVx * distX + ct->rVy * distY;
+
             dt = TIMESTEP - ct->time;
           //  std::cout << "bf v[" << p << "]: " << velocityXL[p] << " | v[" << s << "]: " << velocityXL[s] <<  " ct: "<< ct->time << std::endl;
-            velocityXL[p] += (   ((1.0f + eccentricity) * massL[s]) / sumMass) * ((ct->b * ct->uDx) / sumRadii);
-            velocityYL[p] += (   ((1.0f + eccentricity) * massL[s]) / sumMass) * ((ct->b * ct->uDy) / sumRadii);
-            velocityXL[s] += ( - ((1.0f + eccentricity) * massL[p]) / sumMass) * ((ct->b * ct->uDx) / sumRadii); 
-            velocityYL[s] += ( - ((1.0f + eccentricity) * massL[p]) / sumMass) * ((ct->b * ct->uDy) / sumRadii);
+            ct->fpvx += (   ((1.0f + eccentricity) * massL[s]) / sumMass) * ((b * uDx) / sumRadii);
+            ct->fpvy += (   ((1.0f + eccentricity) * massL[s]) / sumMass) * ((b * uDy) / sumRadii);
+            ct->fsvx += ( - ((1.0f + eccentricity) * massL[p]) / sumMass) * ((b * uDx) / sumRadii); 
+            ct->fsvy += ( - ((1.0f + eccentricity) * massL[p]) / sumMass) * ((b * uDy) / sumRadii);
             
             // std::cout << "at v[" << p << "]: " << velocityXL[p] << " | v[" << s << "]: " << velocityXL[s] <<  " ct: "<< ct->time << std::endl;
             
             // std::cout << "uDx[" << p << "]: " << ct->uDx << " | uDy[" << s << "]: " << ct->uDy <<  " ct: "<< ct->time << std::endl;
             
-            positionXL[p] += velocityXL[p] * dt;
-            positionYL[p] += velocityYL[p] * dt;
-            positionXL[s] += velocityXL[s] * dt;
-            positionYL[s] += velocityYL[s] * dt;
+            positionXL[p] += ct->fpvx * dt;
+            positionYL[p] += ct->fpvy * dt;
+            positionXL[s] += ct->fsvx * dt;
+            positionYL[s] += ct->fsvy * dt;
+
+            velocityXL[p] = ct->fpvx;
+            velocityYL[p] = ct->fpvy;
+            velocityXL[s] = ct->fsvx;
+            velocityYL[s] = ct->fsvy;
 
             // std::cout << "at v[" << p << "]: " << velocityXL[p] << " | v[" << s << "]: " << velocityXL[s] <<  " ct: "<< ct->time << std::endl;
             // dvx = ( ( massL[s]) / sumMass) * (ct->b * ct->uDx / sumRadii);
