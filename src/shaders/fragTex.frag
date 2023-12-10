@@ -8,3 +8,4 @@ uniform sampler2D textureSampler;
 void main() {
     fragmentColor = texture(textureSampler, texCoords);
 }
+#end

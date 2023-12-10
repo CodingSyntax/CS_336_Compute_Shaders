@@ -1,6 +1,6 @@
 #pragma once
 #include "config.h"
-#include "util.h"
+#include "dataHandle.h"
 
 unsigned int loadAndCompileShader(const char *shaderSrc, unsigned int moduleType);
 
@@ -18,5 +18,8 @@ unsigned int createAndLoadBuffer(std::vector<T> data) {
     glBufferData(GL_ARRAY_BUFFER, data.size() * sizeof(T), data.data(), GL_STATIC_DRAW);
     return buffer;
 }
+
+unsigned int createAndLoadBuffer(Data data);
+
 
 unsigned int createAndLoadIndexBuffer(std::vector<unsigned int> data);

@@ -1,0 +1,72 @@
+#version 430
+
+#define posX(i) particleBuffer.particles[i][0]
+#define posY(i) particleBuffer.particles[i][1]
+#define mass(i) particleBuffer.particles[i][2]
+#define velX(i) particleBuffer.particles[i][3]
+#define velY(i) particleBuffer.particles[i][4]
+#define forceX(i) forceBuffer.force[i][0]
+#define forceY(i) forceBuffer.force[i][1]
+
+//Workgroup size
+layout(local_size_x = 64) in;
+
+// layout(rgba32f, binding = 0) uniform image2D colorBuffer;
+
+layout(std430, binding = 1) buffer particleApi
+{
+    // Should be in the format {posX, posY, mass, velX, velY}
+    float particles[][5];
+} particleBuffer;
+
+layout(std430, binding = 2) buffer forcecApi
+{
+    // Should be in the format {forceX, forceY}
+    float force[][2];
+} forceBuffer;
+
+
+const float G = 10;
+const float elasticity = 0.25;
+const float TIMESTEP = 0.02;
+
+void main() {
+    // ivec2 pixelPos = ivec2(gl_GlobalInvocationID.xy);
+    // ivec2 screenSize = imageSize(colorBuffer);
+    // if (pixelPos.x >= screenSize.x || pixelPos.y >= screenSize.y) return;
+    
+    // float apectRatio = float(screenSize.y)/screenSize.x;
+    
+    // DO the math thing
+    int size = particleBuffer.particles.length();
+    uint i = gl_GlobalInvocationID.x;
+    
+    double t;
+    double dist, distX, distY;
+    double relativeVelocitySq, relativeVelocityX, relativeVelocityY;
+    double b, d;
+
+    distX = posX(secondary) - posX(primary);
+    distY = posY(secondary) - posY(primary);
+    relativeVelocityX = velX(secondary) - velX(primary);
+    relativeVelocityY = velY(secondary) - velY(primary);
+    
+    b = distX * relativeVelocityX + distY * relativeVelocityY;
+
+    if (b < 0) { // possible collision
+        dist = sqrt(distX * distX + distY * distY);
+        relativeVelocitySq = relativeVelocityX * relativeVelocityX + relativeVelocityY * relativeVelocityY;
+        d = (b * b) - (relativeVelocitySq) * (dist * dist - sumRadii * sumRadii);
+        if (d > 0) {
+            t = (- b - sqrt(d)) / relativeVelocitySq;
+           //  std::cout << primary << " " << secondary <<" t " << t << std::endl;
+
+            if (t <= TIMESTEP) {
+                // CollisionEvent* ct = new CollisionEvent(primary, secondary, t, b, distX / dist, distY / dist);
+                // collisionPriority.push(ct);
+                // collisionEventMap[uniquePairingHash(primary, secondary)] = ct;
+            }
+        }   
+    }
+}
+#end

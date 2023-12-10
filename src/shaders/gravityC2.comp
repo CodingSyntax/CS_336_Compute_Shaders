@@ -11,14 +11,14 @@ layout(std430, binding = 1) buffer particleApi
     float particles[][3];
 } particleBuffer;
 
-layout(std430, binding = 2) buffer forceApi
+layout(std430, binding = 2) buffer accApi
 {
     // Should be in the format {accX, accY}
-    float force[][2];
-} forceBuffer;
+    float acc[][2];
+} accBuffer;
 
 
-const float G = 10;
+const float G = 5;
 
 void main() {
     // ivec2 pixelPos = ivec2(gl_GlobalInvocationID.xy);
@@ -38,22 +38,19 @@ void main() {
         distx = particleBuffer.particles[j][0] - particleBuffer.particles[i][0]; 
         disty = particleBuffer.particles[j][1] - particleBuffer.particles[i][1];
         
-        if (sqrt(distx * distx + disty * disty) <= 1) continue; //Prevents division by 0
-        dir = atan(disty, distx);
+        float dist = sqrt(distx * distx + disty * disty);
         
-        //Force = mass * acc
-        // 
-
-        A = particleBuffer.particles[j][2] / (distx * distx + disty * disty);
-        netAx += A * cos(dir);
-        netAy += A * sin(dir);
+        if (dist <= 0) continue; //Prevents division by 0
         
-        float forceX = particleBuffer.particles[i][2] * A * cos(dir) * G;
-        float forceY = particleBuffer.particles[i][2] * A * sin(dir) * G;
-        forceBuffer.force[i][0] += forceX;
-        forceBuffer.force[i][1] += forceY;
-        forceBuffer.force[j][0] -= forceX;
-        forceBuffer.force[j][1] -= forceY;
+        float A = G / (dist * dist * dist);
+        
+        float dAx = distx * A;
+        float dAy = disty * A;
+        
+        accBuffer.acc[i][0] += dAx * particleBuffer.particles[j][2];
+        accBuffer.acc[i][1] += dAy * particleBuffer.particles[j][2];
+        accBuffer.acc[j][0] -= dAx * particleBuffer.particles[i][2];
+        accBuffer.acc[j][1] -= dAy * particleBuffer.particles[i][2];
     }
     //Write
     // accelBuffer.accel[i][0] = netAx * G;

@@ -25,3 +25,4 @@ void main() {
     //write
     imageStore(colorBuffer, pixelPos, vec4(color, 1.0));
 }
+#end

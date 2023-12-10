@@ -12,6 +12,7 @@ unsigned int loadAndCompileShader(const char *shaderSrc, unsigned int moduleType
         char errorLog[1024];
         glGetShaderInfoLog(shaderModule, 1024, NULL, errorLog);
         std::cerr << "Shader Module compilation error: (" << name << ")\n" << errorLog << std::endl;
+        std::cerr << shaderSrc << std::endl;
     }
     
     return shaderModule;
@@ -74,6 +75,15 @@ unsigned int createShaderProgram(const char *computeSrc, std::string name) {
 
 unsigned int createShaderProgram(const char *computeSrc) {
     return createShaderProgram(computeSrc, "unknown");
+}
+
+unsigned int createAndLoadBuffer(Data data) {
+    unsigned int buffer;
+    glGenBuffers(1, &buffer);
+    
+    glBindBuffer(GL_ARRAY_BUFFER, buffer);
+    glBufferData(GL_ARRAY_BUFFER, data.getFullSize(), data.getData(), GL_STATIC_DRAW);
+    return buffer;
 }
 
 unsigned int createAndLoadIndexBuffer(std::vector<unsigned int> data) {

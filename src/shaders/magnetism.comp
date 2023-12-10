@@ -38,18 +38,25 @@ void main() {
         distx = particleBuffer.particles[j][0] - particleBuffer.particles[i][0]; 
         disty = particleBuffer.particles[j][1] - particleBuffer.particles[i][1];
         
-        if (sqrt(distx * distx + disty * disty) <= 1) continue; //Prevents division by 0
-        dir = atan(disty, distx);
+        float dist = sqrt(distx * distx + disty * disty);
+        float distu = (distx * distx + disty * disty);
+        if (dist <= 0) continue; //Prevents division by 0
         
         //Force = mass * acc
         // 
-
-        A = particleBuffer.particles[j][2] / (distx * distx + disty * disty);
-        netAx += A * cos(dir);
-        netAy += A * sin(dir);
         
-        float forceX = particleBuffer.particles[i][2] * A * cos(dir) * G;
-        float forceY = particleBuffer.particles[i][2] * A * sin(dir) * G;
+        // A =  / (distx * distx + disty * disty);
+        // netAx += A * cos(dir);
+        float Ax = (distx / distu) * abs(particleBuffer.particles[j][2]);
+        float Ay = (disty / distu) * abs(particleBuffer.particles[j][2]);
+        // netAy += A * sin(dir);
+        
+        float c = (particleBuffer.particles[i][2]) * (particleBuffer.particles[j][2]);
+        float m = -1;
+        if (c < 0) m = 1;
+        
+        float forceX = m * abs(particleBuffer.particles[i][2]) * Ax * G;
+        float forceY = m * abs(particleBuffer.particles[i][2]) * Ay * G;
         forceBuffer.force[i][0] += forceX;
         forceBuffer.force[i][1] += forceY;
         forceBuffer.force[j][0] -= forceX;
