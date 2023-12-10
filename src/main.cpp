@@ -202,7 +202,7 @@ void initWorld() {
     addParticle(300, 200, 200, 0, 0);
     // addParticle(100, 150, 286.6025, 0, 0);
     addParticle(300, 100, 200, 0, 0);
-    for (i = 0; i < 50; i++) {
+    for (i = 0; i < 300; i++) {
     // r1 = std::rand() % 2 ? 1 : -1;
     // r2 = std::rand() % 2 ? 1 : -1;
         minDist = 0.0f;
@@ -218,7 +218,6 @@ void initWorld() {
         //   std::cout << minDist << std::endl;
         }
         addParticle(100, x, y, 0, 0); //(std::rand() % 20 + 2) * r1, (std::rand() % 20 + 2)  * r2);
-    //addParticle(1000, i + 10, i + 10, 0, 0); //(std::rand() % 20 + 2) * r1, (std::rand() % 20 + 2)  * r2);
     }
 }
 
@@ -270,72 +269,13 @@ void calculateForce() {
 void calculatePosition() {
     long unsigned i;
     for (i = 0; i < massL.size(); ++i) {
-        //if (!collision[i]) { 
+        if (!collision[i]) { 
             velocityXL[i] += (forceXL[i] * TIMESTEP) / massL[i]; //+ iVelocityXL[i];
             velocityYL[i] += (forceYL[i] * TIMESTEP) / massL[i]; //+ iVelocityYL[i];
             positionXL[i] += velocityXL[i] * TIMESTEP;
             positionYL[i] += velocityYL[i] * TIMESTEP;
-        //}
-        collision[i] = 0;
-    }
-}
-
-
-void calculateCollision() {
-    long unsigned i, j;
-    float deltaX, deltaY;
-    float distance;
-    float collisionNormalX, collisionNormalY;
-    float relativeSpeedX, relativeSpeedY;
-    float constraintSpeed, constraintValue;
-    float offsetX, offsetY;
-    float impulseX, impulseY;
-    float sumMass, reducedMass;
-    float elasticity = 0.0f;
-    
-    // After applying forces and integrating position
-    for (i = 0; i < massL.size(); ++i)
-    {
-        for (j = i + 1; j < massL.size(); ++j)
-        {
-            deltaX = positionXL[j] - positionXL[i];
-            deltaY = positionYL[j] - positionYL[i];
-            
-            // sumRadii = 2; //particles[j].radius + particles[i].radius;
-            distance = sqrt(deltaX * deltaX + deltaY * deltaY);
-            collisionNormalX = deltaX / distance;
-            collisionNormalY = deltaY / distance;
-            relativeSpeedX = velocityXL[j] - velocityXL[i];
-            relativeSpeedY = velocityYL[j] - velocityYL[i];
-            constraintSpeed = collisionNormalX * relativeSpeedX + collisionNormalY * relativeSpeedY;
-            constraintValue = distance - sumRadii; 
-            
-                //std::cout << constraintValue << " " << constraintSpeed << " " << (constraintValue < 0 ) << std::endl;
-            if (constraintValue < 0.f && constraintSpeed < 0.f)
-            {
-
-                sumMass = massL[i] + massL[j];
-                reducedMass = 1.f / (1.f / massL[i] + 1.f / massL[j]);
-                
-                offsetX = constraintValue * collisionNormalX;
-                offsetY = constraintValue * collisionNormalY;
-
-                positionXL[i] += offsetX * massL[j] / sumMass;
-                positionYL[i] += offsetY * massL[j] / sumMass;
-                positionXL[j] -= offsetX * massL[i] / sumMass;
-                positionYL[j] -= offsetY * massL[i] / sumMass;
-
-                // impulseX = collisionNormalX * (-constraintSpeed * (1.f + elasticity) - 1.f / TIMESTEP * constraintValue) * reducedMass;
-                // impulseY = collisionNormalY * (-constraintSpeed * (1.f + elasticity) - 1.f / TIMESTEP * constraintValue) * reducedMass;
-                
-                impulseX = collisionNormalX * (-constraintSpeed * (1.f + elasticity)) * reducedMass;
-                impulseY = collisionNormalY * (-constraintSpeed * (1.f + elasticity)) * reducedMass;
-                velocityXL[i] -= impulseX / massL[i];
-                velocityYL[i] -= impulseY / massL[i];
-                velocityXL[j] += impulseX / massL[j];
-                velocityYL[j] += impulseY / massL[j];
-            }
         }
+        collision[i] = 0;
     }
 }
 
@@ -381,16 +321,22 @@ unsigned long uniquePairingHash(unsigned long a, unsigned long b) {
     return first + (second * (second - 1)) / 2;
 }
 
-void doCollisionDetection(long unsigned int primary, long unsigned int secondary, long unsigned int &numberOfCollisions) {
+void doCollisionDetection(long unsigned int primary, long unsigned int secondary) {
     double t;
     double dist, distX, distY;
     double relativeVelocitySq, relativeVelocityX, relativeVelocityY;
     double b, d;
+    double fpvx, fpvy, fsvx, fsvy;
+
+    fpvx = velocityXL[primary] + (forceXL[primary] * TIMESTEP) / massL[primary];
+    fpvy = velocityYL[primary] + (forceYL[primary] * TIMESTEP) / massL[primary]; 
+    fsvx = velocityXL[secondary] + (forceXL[secondary] * TIMESTEP) / massL[secondary];
+    fsvy = velocityYL[secondary] + (forceYL[secondary] * TIMESTEP) / massL[secondary]; 
 
     distX = positionXL[secondary] - positionXL[primary];
     distY = positionYL[secondary] - positionYL[primary];
-    relativeVelocityX = velocityXL[secondary] - velocityXL[primary];
-    relativeVelocityY = velocityYL[secondary] - velocityYL[primary];
+    relativeVelocityX = fsvx - fpvx;
+    relativeVelocityY = fsvy - fpvy;
     
     b = distX * relativeVelocityX + distY * relativeVelocityY;
 
@@ -400,7 +346,6 @@ void doCollisionDetection(long unsigned int primary, long unsigned int secondary
         d = (b * b) - (relativeVelocitySq) * (dist * dist - sumRadii * sumRadii);
         if (d > 0) {
             t = (- b - sqrt(d)) / relativeVelocitySq;
-           //  std::cout << primary << " " << secondary <<" t " << t << std::endl;
 
             if (t <= TIMESTEP) {
                 CollisionEvent* ct = new CollisionEvent(primary, secondary, t, b, distX / dist, distY / dist);
@@ -416,14 +361,11 @@ void calculateCollision2() {
 
     float sumMass;
     long unsigned i, j;
-    double dvy, dvx;
     double dt;
-
-    long unsigned numberOfCollisions = 0;
 
     for (i = 0; i < massL.size(); ++i) {
         for (j = i + 1; j < massL.size(); ++j) {
-            doCollisionDetection(i, j, numberOfCollisions);
+            doCollisionDetection(i, j);
         }
 
     }
@@ -439,12 +381,6 @@ void calculateCollision2() {
             s = ct->secondary;
             sumMass = massL[s] + massL[p];
             
-            // if (ct->time < 0) {
-            //     std::cout << "ct: " << ct->time << std::endl;
-            // }
-
-           // std::cout << "bf p[" << p << "]: " << positionXL[p] << " | p[" << s << "]: " << positionXL[s] <<  " ct: "<< ct->time << std::endl;
- 
             positionXL[p] += velocityXL[p] * ct->time;
             positionYL[p] += velocityYL[p] * ct->time;
             positionXL[s] += velocityXL[s] * ct->time;
@@ -494,18 +430,15 @@ void calculateCollision2() {
                   //  std::cout <<"ps:" << uniquePairingHash(p, s) <<" | i:"<<i<<"| p:"<<p<<" | ip:"<<pk<<"| is:"<<sk<< " | numCol: " << numberOfCollisions << std::endl;
                         
                     if (collisionEventMap.find(pk) != collisionEventMap.end()) {
-                        //numberOfCollisions--;    
-                    //    std::cout << pk << " :: " << i << " numCol: " << numberOfCollisions << std::endl;
                         collisionEventMap[pk]->isValid = false;
                         collisionEventMap.erase(pk);
-                        doCollisionDetection(i, p, numberOfCollisions);
+                        doCollisionDetection(i, p);
                     }
                     if (collisionEventMap.find(sk) != collisionEventMap.end()) {
-                        //numberOfCollisions--;
                     //    std::cout << sk << " '' " << i << " numCol: " << numberOfCollisions << std::endl;
                         collisionEventMap[sk]->isValid = false;
                         collisionEventMap.erase(sk);
-                        doCollisionDetection(i, s, numberOfCollisions);
+                        doCollisionDetection(i, s);
                     }
                 } 
             }
