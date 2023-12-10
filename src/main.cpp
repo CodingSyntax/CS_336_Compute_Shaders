@@ -29,8 +29,6 @@ GLint textureSamplerLocation;
 // UNIVERSE DATA
 std::vector<float> positionXL;
 std::vector<float> positionYL;
-std::vector<float> forceXL;
-std::vector<float> forceYL;
 std::vector<float> accelXL;
 std::vector<float> accelYL;
 
@@ -202,13 +200,13 @@ void initWorld() {
     addParticle(100, 200, 200, 0, 0);
     // addParticle(100, 150, 286.6025, 0, 0);
    // addParticle(300, 100, 200, 0, 0);
-    for (i = 0; i < 300; i++) {
+    for (i = 0; i < 500; i++) {
     // r1 = std::rand() % 2 ? 1 : -1;
     // r2 = std::rand() % 2 ? 1 : -1;
         minDist = 0.0f;
         while(minDist <= sumRadii) {
-        x = (int) (std::rand() % 390) + 10;
-        y = (int) (std::rand() % 390) + 10;
+        x = (int) (std::rand() % 790) + 10;
+        y = (int) (std::rand() % 790) + 10;
         for (j = 0; j < massL.size(); ++j) {
             deltaX = positionXL[j] - x;
             deltaY = positionYL[j] - y;
@@ -228,8 +226,6 @@ void addParticle(int mass, float x, float y, float vx, float vy) {
     collision.push_back(0);
     velocityXL.push_back(vx);
     velocityYL.push_back(vy);
-    forceXL.push_back(0);
-    forceYL.push_back(0);
     accelXL.push_back(0);
     accelYL.push_back(0);
 }
@@ -240,11 +236,11 @@ void calculateForce() {
     float deltaX, deltaY;
     float distance;
     float directionX, directionY;
-    float forceX, forceY;
+    float dAx, dAy;
 
     for (i = 0; i < massL.size(); ++i) {
-        forceXL[i] = 0;
-        forceYL[i] = 0;
+        accelXL[i] = 0;
+        accelYL[i] = 0;
     }
 
     for (i = 0; i < massL.size(); ++i) {
@@ -255,13 +251,13 @@ void calculateForce() {
             directionX = deltaX / distance;
             directionY = deltaY / distance;
 
-            forceX = (directionX * G * massL[i] * massL[j]) / (distance * distance);
-            forceY = (directionY * G * massL[i] * massL[j]) / (distance * distance);
+            dAx = (directionX * G) / (distance * distance);
+            dAy = (directionY * G) / (distance * distance);
 
-            forceXL[i] += forceX;
-            forceYL[i] += forceY;
-            forceXL[j] -= forceX;
-            forceYL[j] -= forceY;   
+            accelXL[i] += dAx * massL[j];
+            accelYL[i] += dAy * massL[j];
+            accelXL[j] -= dAx * massL[i];
+            accelYL[j] -= dAy * massL[i];   
         }
     }
 }
@@ -270,8 +266,8 @@ void calculatePosition() {
     long unsigned i;
     for (i = 0; i < massL.size(); ++i) {
         if (!collision[i]) { 
-            velocityXL[i] += (forceXL[i] * TIMESTEP) / massL[i]; //+ iVelocityXL[i];
-            velocityYL[i] += (forceYL[i] * TIMESTEP) / massL[i]; //+ iVelocityYL[i];
+            velocityXL[i] += accelXL[i] * TIMESTEP;
+            velocityYL[i] += accelYL[i] * TIMESTEP;
             positionXL[i] += velocityXL[i] * TIMESTEP;
             positionYL[i] += velocityYL[i] * TIMESTEP;
         }
@@ -336,10 +332,10 @@ void doCollisionDetection(long unsigned int primary, long unsigned int secondary
     double b, d;
     double fpvx, fpvy, fsvx, fsvy;
 
-    fpvx = velocityXL[primary] + (forceXL[primary] * TIMESTEP) / massL[primary];
-    fpvy = velocityYL[primary] + (forceYL[primary] * TIMESTEP) / massL[primary]; 
-    fsvx = velocityXL[secondary] + (forceXL[secondary] * TIMESTEP) / massL[secondary];
-    fsvy = velocityYL[secondary] + (forceYL[secondary] * TIMESTEP) / massL[secondary]; 
+    fpvx = velocityXL[primary] + (accelXL[primary] * TIMESTEP);
+    fpvy = velocityYL[primary] + (accelYL[primary] * TIMESTEP); 
+    fsvx = velocityXL[secondary] + (accelXL[secondary] * TIMESTEP);
+    fsvy = velocityYL[secondary] + (accelYL[secondary] * TIMESTEP); 
 
     distX = positionXL[secondary] - positionXL[primary];
     distY = positionYL[secondary] - positionYL[primary];
@@ -369,7 +365,7 @@ void calculateCollision2() {
 
     float sumMass;
     long unsigned i, j;
-    double dt, b, distX, distY, dist, uDx, uDy;
+    double dt, b, m, distX, distY, dist, uDx, uDy;
 
     for (i = 0; i < massL.size(); ++i) {
         for (j = i + 1; j < massL.size(); ++j) {
@@ -399,9 +395,9 @@ void calculateCollision2() {
             distX = positionXL[s] - positionXL[p];
             distY = positionYL[s] - positionYL[p];
             dist = sqrt(distX * distX + distY * distY);
-            if (dist - sumRadii > 0.001) {
-                std::cout << "af p[" << p << "]: " << positionXL[p] << " | p[" << s << "]: " << positionXL[s] <<  " ct: "<< ct->time << std::endl;
-            } 
+            // if (dist - sumRadii > 0.001) {
+            //     std::cout << "af p[" << p << "]: " << positionXL[p] << " | p[" << s << "]: " << positionXL[s] <<  " ct: "<< ct->time << std::endl;
+            // } 
 
             uDx = distX / dist;
             uDy = distY / dist;
@@ -409,11 +405,12 @@ void calculateCollision2() {
             b = ct->rVx * distX + ct->rVy * distY;
 
             dt = TIMESTEP - ct->time;
+            m = ((1.0f + eccentricity) / sumMass) * (b / sumRadii);
           //  std::cout << "bf v[" << p << "]: " << velocityXL[p] << " | v[" << s << "]: " << velocityXL[s] <<  " ct: "<< ct->time << std::endl;
-            ct->fpvx += (   ((1.0f + eccentricity) * massL[s]) / sumMass) * ((b * uDx) / sumRadii);
-            ct->fpvy += (   ((1.0f + eccentricity) * massL[s]) / sumMass) * ((b * uDy) / sumRadii);
-            ct->fsvx += ( - ((1.0f + eccentricity) * massL[p]) / sumMass) * ((b * uDx) / sumRadii); 
-            ct->fsvy += ( - ((1.0f + eccentricity) * massL[p]) / sumMass) * ((b * uDy) / sumRadii);
+            ct->fpvx += m * massL[s] * uDx;
+            ct->fpvy += m * massL[s] * uDy;
+            ct->fsvx -= m * massL[p] * uDx; 
+            ct->fsvy -= m * massL[p] * uDy;
             
             // std::cout << "at v[" << p << "]: " << velocityXL[p] << " | v[" << s << "]: " << velocityXL[s] <<  " ct: "<< ct->time << std::endl;
             
@@ -429,19 +426,6 @@ void calculateCollision2() {
             velocityXL[s] = ct->fsvx;
             velocityYL[s] = ct->fsvy;
 
-            // std::cout << "at v[" << p << "]: " << velocityXL[p] << " | v[" << s << "]: " << velocityXL[s] <<  " ct: "<< ct->time << std::endl;
-            // dvx = ( ( massL[s]) / sumMass) * (ct->b * ct->uDx / sumRadii);
-            // dvy = ( ( massL[s]) / sumMass) * (ct->b * ct->uDy / sumRadii);
-            // positionXL[p] += dvx * dt;
-            // positionYL[p] += dvy * dt;
-            // std::cout << "before p[" << p << "]: " << positionXL[p] << " | p[" << s << "]: " << positionXL[s] <<  " ct: "<< ct->time << std::endl;
-
-            // dvx = ( - ( massL[p]) / sumMass) * (ct->b * ct->uDx / sumRadii);
-            // dvy = ( - ( massL[p]) / sumMass) * (ct->b * ct->uDy / sumRadii);
-            // positionXL[s] += dvx * dt;
-            // positionYL[s] += dvy * dt;
-
-            
             collision[p] = 1;
             collision[s] = 1;
             
@@ -498,17 +482,17 @@ void renderParticle() {
         if (x >= WIDTH || x < 0 || y >= HEIGHT || y < 0) continue;
       //  std::cout << x << " " << y << std::endl;
         
-        pixels[(x + y * WIDTH) * 4 + 0] = massL[i] / 2;  // Red
+        pixels[(x + y * WIDTH) * 4 + 0] = 100;  // Red
         pixels[(x + y * WIDTH) * 4 + 1] = 255;  // Green
         pixels[(x + y * WIDTH) * 4 + 2] = 255;  // Blue
         pixels[(x + y * WIDTH) * 4 + 3] = 255;  // Alpha
 
-        if (i == 0) {
-            pixels[(x + y * WIDTH) * 4 + 0] = 255;  // Red
-            pixels[(x + y * WIDTH) * 4 + 1] = 255;  // Green
-            pixels[(x + y * WIDTH) * 4 + 2] = 255;  // Blue
-            pixels[(x + y * WIDTH) * 4 + 3] = 255;  // Alpha
-        }
+        // if (i == 0) {
+        //     pixels[(x + y * WIDTH) * 4 + 0] = 255;  // Red
+        //     pixels[(x + y * WIDTH) * 4 + 1] = 255;  // Green
+        //     pixels[(x + y * WIDTH) * 4 + 2] = 255;  // Blue
+        //     pixels[(x + y * WIDTH) * 4 + 3] = 255;  // Alpha
+        // }
     
     }
 }
