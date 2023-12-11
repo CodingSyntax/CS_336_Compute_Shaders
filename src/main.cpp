@@ -159,11 +159,21 @@ int main(int argc, char *argv[]) {
     
     //draw
     
+    double lastTime = glfwGetTime();
+    int nbFrames = 0;
     
     while (!glfwWindowShouldClose(window)) {
         updateWorld();
         //std::cout << positionXL[0] << std::endl;
         draw();
+        
+        double currentTime = glfwGetTime();
+        nbFrames++;
+        if (currentTime - lastTime >= 1) {
+            std::cout << (1000.0 / nbFrames) << "ms/frame" << std::endl;
+            nbFrames = 0;
+            lastTime = currentTime;
+        }
         //std::this_thread::sleep_for(timespan);
     }
     
