@@ -40,7 +40,7 @@ std::vector<bool> collision;
 std::vector<float> massL;
 
 const float G = 10.0f;
-const float TIMESTEP = 0.005f;
+const float TIMESTEP = 0.01f;
 const float sumRadii = 10.0f;
 const float eccentricity = 0.8f;
 
@@ -190,33 +190,15 @@ int main(int argc, char *argv[]) {
 }
 
 // UNIVERSE FUNCTIONS IMPLEMENTATION
-void initWorld() {
-    long unsigned i, j;
-    //int r1, r2;
-    int x, y;
-    float dist, minDist = 0.0f;
-    float deltaX, deltaY;
+void random500();
+void planetAndSatellite();
+void twoParticlesStraight();
+void threeParticlesTriangle();
+void planetAndMeteor();
+void planetAndTidal();
 
-    addParticle(100, 200, 200, 0, 0);
-    // addParticle(100, 150, 286.6025, 0, 0);
-   // addParticle(300, 100, 200, 0, 0);
-    for (i = 0; i < 500; i++) {
-    // r1 = std::rand() % 2 ? 1 : -1;
-    // r2 = std::rand() % 2 ? 1 : -1;
-        minDist = 0.0f;
-        while(minDist <= sumRadii) {
-        x = (int) (std::rand() % 790) + 10;
-        y = (int) (std::rand() % 790) + 10;
-        for (j = 0; j < massL.size(); ++j) {
-            deltaX = positionXL[j] - x;
-            deltaY = positionYL[j] - y;
-            dist = sqrt(deltaX * deltaX + deltaY * deltaY);
-            if (dist < minDist || j == 0) minDist = dist;
-        }
-        //   std::cout << minDist << std::endl;
-        }
-        addParticle(100, x, y, 0, 0); //(std::rand() % 20 + 2) * r1, (std::rand() % 20 + 2)  * r2);
-    }
+void initWorld() {
+    planetAndTidal();
 }
 
 void addParticle(int mass, float x, float y, float vx, float vy) {
@@ -230,11 +212,267 @@ void addParticle(int mass, float x, float y, float vx, float vy) {
     accelYL.push_back(0);
 }
 
+void random500() {
+    long unsigned i, j;
+    int x, y;
+    float dist, minDist = 0.0f;
+    float deltaX, deltaY;
+
+    addParticle(100, 200, 200, 0, 0);
+    for (i = 0; i < 500; i++) {
+        minDist = 0.0f;
+        while(minDist <= sumRadii) {
+            x = (int) (std::rand() % 790) + 10;
+            y = (int) (std::rand() % 790) + 10;
+            for (j = 0; j < massL.size(); ++j) {
+                deltaX = positionXL[j] - x;
+                deltaY = positionYL[j] - y;
+                dist = sqrt(deltaX * deltaX + deltaY * deltaY);
+                if (dist < minDist || j == 0) minDist = dist;
+            }
+        }
+        addParticle(100, x, y, 0, 0);
+    }
+}
+
+void twoParticlesStraight() {
+    addParticle(1000, 200, 200, 0, 0);
+    addParticle(1000, 300, 200, 0, 0);
+}
+
+void threeParticlesTriangle() {
+    addParticle(1000, 200, 200, 0, 0);
+    addParticle(1000, 250, 286.6, 0, 0);
+    addParticle(1000, 300, 200, 0, 0);
+}
+
+
+
+void planetAndSatellite() {
+    long unsigned i, j;
+    int x, y;
+    float dist, minDist = 0.0f;
+    float deltaX, deltaY;
+    
+    float distance = 300;
+
+    float coreMassS = 100;
+    float childMassS = 30;
+
+    float coreMassP = 1000;
+    float childMassP = 100;
+
+    float corePosPX = 400;
+    float corePosPY = 400;
+
+    float corePosSX = corePosPX;
+    float corePosSY = corePosPY - distance;
+
+    float childCountS = 50;
+    float childCountP = 100;
+
+
+    float totalMassS = coreMassS + (childMassS * childCountS);
+    float totalMassP = coreMassP + (childMassP * childCountP);
+    
+    int spaceBias = 50;
+    int boxLengthP = sqrt(childCountP + spaceBias) * (sumRadii + 1);
+    int boxLengthS = sqrt(childCountS + spaceBias) * (sumRadii + 1);
+
+    double v = sqrt(G * (totalMassP) / distance);
+
+    std::cout << "p bx:"<< boxLengthP << std::endl;
+   
+    std::cout << "px " << "min: " <<  corePosPX - (boxLengthP / 2) << " max: " << boxLengthP + corePosPX << std::endl;
+    std::cout << "py " << "min: " <<  corePosPY - (boxLengthP / 2) << " max: " << boxLengthP + corePosPY << std::endl;
+
+    addParticle(coreMassP, corePosPX, corePosPY, 0, 0);
+    for (i = 0; i < childCountP; i++) {
+        minDist = 0.0f;
+        while(minDist <= sumRadii + 1) {
+            x = (int) (std::rand() % boxLengthP) + corePosPX - (boxLengthP / 2);
+            y = (int) (std::rand() % boxLengthP) + corePosPY - (boxLengthP / 2);
+            for (j = 0; j < massL.size(); ++j) {
+                deltaX = positionXL[j] - x;
+                deltaY = positionYL[j] - y;
+                dist = sqrt(deltaX * deltaX + deltaY * deltaY);
+                if (dist < minDist || j == 0) minDist = dist;
+            }
+        }
+        addParticle(childMassP, x, y, 0, 0);
+    }
+    //std::cout << v << std::endl;
+    
+    addParticle(coreMassS, corePosSX, corePosSY, v, 0);
+    for (i = 0; i < childCountS; i++) {
+        minDist = 0.0f;
+        while(minDist <= sumRadii + 1) {
+            x = (int) (std::rand() % boxLengthS) + corePosSX - (boxLengthS / 2);
+            y = (int) (std::rand() % boxLengthS) + corePosSY - (boxLengthS / 2);
+            for (j = 0; j < massL.size(); ++j) {
+                deltaX = positionXL[j] - x;
+                deltaY = positionYL[j] - y;
+                dist = sqrt(deltaX * deltaX + deltaY * deltaY);
+                if (dist < minDist || j == 0) minDist = dist;
+            }
+        }
+        addParticle(childMassS, x, y, v, 0);
+    }
+}
+
+
+
+void planetAndMeteor() {
+    long unsigned i, j;
+    int x, y;
+    float dist, minDist = 0.0f;
+    float deltaX, deltaY;
+    
+    float distance = 600;
+
+    float coreMassS = 1000;
+    float childMassS = 30;
+
+    float coreMassP = 1000;
+    float childMassP = 100;
+
+    float corePosPX = 400;
+    float corePosPY = 400;
+
+    float corePosSX = corePosPX;
+    float corePosSY = corePosPY - distance;
+
+    float childCountS = 10;
+    float childCountP = 100;
+
+
+    float totalMassS = coreMassS + (childMassS * childCountS);
+    float totalMassP = coreMassP + (childMassP * childCountP);
+    
+    int spaceBias = 50;
+    int boxLengthP = sqrt(childCountP + spaceBias) * (sumRadii + 1);
+    int boxLengthS = sqrt(childCountS + spaceBias) * (sumRadii + 1);
+
+
+    std::cout << "p bx:"<< boxLengthP << std::endl;
+   
+    std::cout << "px " << "min: " <<  corePosPX - (boxLengthP / 2) << " max: " << boxLengthP + corePosPX << std::endl;
+    std::cout << "py " << "min: " <<  corePosPY - (boxLengthP / 2) << " max: " << boxLengthP + corePosPY << std::endl;
+
+    addParticle(coreMassP, corePosPX, corePosPY, 0, 0);
+    for (i = 0; i < childCountP; i++) {
+        minDist = 0.0f;
+        while(minDist <= sumRadii + 1) {
+            x = (int) (std::rand() % boxLengthP) + corePosPX - (boxLengthP / 2);
+            y = (int) (std::rand() % boxLengthP) + corePosPY - (boxLengthP / 2);
+            for (j = 0; j < massL.size(); ++j) {
+                deltaX = positionXL[j] - x;
+                deltaY = positionYL[j] - y;
+                dist = sqrt(deltaX * deltaX + deltaY * deltaY);
+                if (dist < minDist || j == 0) minDist = dist;
+            }
+        }
+        addParticle(childMassP, x, y, 0, 0);
+    }
+    //std::cout << v << std::endl;
+    
+    double v = 300;
+    addParticle(coreMassS, corePosSX, corePosSY, 0, v);
+    for (i = 0; i < childCountS; i++) {
+        minDist = 0.0f;
+        while(minDist <= sumRadii + 1) {
+            x = (int) (std::rand() % boxLengthS) + corePosSX - (boxLengthS / 2);
+            y = (int) (std::rand() % boxLengthS) + corePosSY - (boxLengthS / 2);
+            for (j = 0; j < massL.size(); ++j) {
+                deltaX = positionXL[j] - x;
+                deltaY = positionYL[j] - y;
+                dist = sqrt(deltaX * deltaX + deltaY * deltaY);
+                if (dist < minDist || j == 0) minDist = dist;
+            }
+        }
+        addParticle(childMassS, x, y, 0, v);
+    }
+}
+
+
+void planetAndTidal() {
+    long unsigned i, j;
+    int x, y;
+    float dist, minDist = 0.0f;
+    float deltaX, deltaY;
+    
+    float distance = 1000;
+
+    float coreMassS = 1000000;
+    float childMassS = 10000;
+
+    float coreMassP = 1000;
+    float childMassP = 100;
+
+    float corePosPX = 300;
+    float corePosPY = 500;
+
+    float corePosSX = corePosPX + 200;
+    float corePosSY = corePosPY - distance;
+
+    float childCountS = 0;
+    float childCountP = 100;
+
+
+    float totalMassS = coreMassS + (childMassS * childCountS);
+    float totalMassP = coreMassP + (childMassP * childCountP);
+    
+    int spaceBias = 50;
+    int boxLengthP = sqrt(childCountP + spaceBias) * (sumRadii + 1);
+    int boxLengthS = sqrt(childCountS + spaceBias) * (sumRadii + 1);
+
+
+    std::cout << "p bx:"<< boxLengthP << std::endl;
+   
+    std::cout << "px " << "min: " <<  corePosPX - (boxLengthP / 2) << " max: " << boxLengthP + corePosPX << std::endl;
+    std::cout << "py " << "min: " <<  corePosPY - (boxLengthP / 2) << " max: " << boxLengthP + corePosPY << std::endl;
+
+    addParticle(coreMassP, corePosPX, corePosPY, 0, 0);
+    for (i = 0; i < childCountP; i++) {
+        minDist = 0.0f;
+        while(minDist <= sumRadii + 1) {
+            x = (int) (std::rand() % boxLengthP) + corePosPX - (boxLengthP / 2);
+            y = (int) (std::rand() % boxLengthP) + corePosPY - (boxLengthP / 2);
+            for (j = 0; j < massL.size(); ++j) {
+                deltaX = positionXL[j] - x;
+                deltaY = positionYL[j] - y;
+                dist = sqrt(deltaX * deltaX + deltaY * deltaY);
+                if (dist < minDist || j == 0) minDist = dist;
+            }
+        }
+        addParticle(childMassP, x, y, 0, 0);
+    }
+    //std::cout << v << std::endl;
+    
+    double v = 200;
+    addParticle(coreMassS, corePosSX, corePosSY, 0, v);
+    for (i = 0; i < childCountS; i++) {
+        minDist = 0.0f;
+        while(minDist <= sumRadii + 1) {
+            x = (int) (std::rand() % boxLengthS) + corePosSX - (boxLengthS / 2);
+            y = (int) (std::rand() % boxLengthS) + corePosSY - (boxLengthS / 2);
+            for (j = 0; j < massL.size(); ++j) {
+                deltaX = positionXL[j] - x;
+                deltaY = positionYL[j] - y;
+                dist = sqrt(deltaX * deltaX + deltaY * deltaY);
+                if (dist < minDist || j == 0) minDist = dist;
+            }
+        }
+        addParticle(childMassS, x, y, 0, v);
+    }
+}
+
 
 void calculateForce() {
     long unsigned i,j;
     float deltaX, deltaY;
     float distance;
+    float distn;
     float directionX, directionY;
     float dAx, dAy;
 
@@ -247,12 +485,13 @@ void calculateForce() {
         for (j = i + 1; j < massL.size(); ++j) {
             deltaX = positionXL[j] - positionXL[i];
             deltaY = positionYL[j] - positionYL[i];
-            distance = sqrt(deltaX * deltaX + deltaY * deltaY);
+            distn = deltaX * deltaX + deltaY * deltaY;
+            distance = sqrt(distn);
             directionX = deltaX / distance;
             directionY = deltaY / distance;
 
-            dAx = (directionX * G) / (distance * distance);
-            dAy = (directionY * G) / (distance * distance);
+            dAx = (directionX * G) / distn;
+            dAy = (directionY * G) / distn;
 
             accelXL[i] += dAx * massL[j];
             accelYL[i] += dAy * massL[j];
@@ -265,7 +504,7 @@ void calculateForce() {
 void calculatePosition() {
     long unsigned i;
     for (i = 0; i < massL.size(); ++i) {
-        if (!collision[i]) { 
+        if (!collision[i]) {
             velocityXL[i] += accelXL[i] * TIMESTEP;
             velocityYL[i] += accelYL[i] * TIMESTEP;
             positionXL[i] += velocityXL[i] * TIMESTEP;
@@ -332,8 +571,8 @@ void doCollisionDetection(long unsigned int primary, long unsigned int secondary
     double b, d;
     double fpvx, fpvy, fsvx, fsvy;
 
-    fpvx = velocityXL[primary] + (accelXL[primary] * TIMESTEP);
-    fpvy = velocityYL[primary] + (accelYL[primary] * TIMESTEP); 
+    fpvx = velocityXL[primary]   + (accelXL[primary]   * TIMESTEP);
+    fpvy = velocityYL[primary]   + (accelYL[primary]   * TIMESTEP); 
     fsvx = velocityXL[secondary] + (accelXL[secondary] * TIMESTEP);
     fsvy = velocityYL[secondary] + (accelYL[secondary] * TIMESTEP); 
 
@@ -346,17 +585,22 @@ void doCollisionDetection(long unsigned int primary, long unsigned int secondary
 
     if (b < 0) { // possible collision
         dist = sqrt(distX * distX + distY * distY);
-        relativeVelocitySq = relativeVelocityX * relativeVelocityX + relativeVelocityY * relativeVelocityY;
-        d = (b * b) - (relativeVelocitySq) * (dist * dist - sumRadii * sumRadii);
-        if (d > 0) {
-            t = (- b - sqrt(d)) / relativeVelocitySq;
-
-            if (t <= TIMESTEP) {
-                CollisionEvent* ct = new CollisionEvent(primary, secondary, t, fpvx, fpvy, fsvx, fsvy, relativeVelocityX, relativeVelocityY, distX / dist, distY / dist);
-                collisionPriority.push(ct);
-                collisionEventMap[uniquePairingHash(primary, secondary)] = ct;
-            }
-        }   
+        // if (dist * dist - sumRadii * sumRadii <= 0) {
+        //     CollisionEvent* ct = new CollisionEvent(primary, secondary, 0, fpvx, fpvy, fsvx, fsvy, relativeVelocityX, relativeVelocityY, distX / dist, distY / dist);
+        //     collisionPriority.push(ct);
+        //     collisionEventMap[uniquePairingHash(primary, secondary)] = ct;       
+        // } else {
+            relativeVelocitySq = relativeVelocityX * relativeVelocityX + relativeVelocityY * relativeVelocityY;
+            d = (b * b) - (relativeVelocitySq) * (dist * dist - sumRadii * sumRadii);
+            if (d > 0) {
+                t = (- b - sqrt(d)) / relativeVelocitySq;
+                if ( t <= TIMESTEP) {
+                    CollisionEvent* ct = new CollisionEvent(primary, secondary, t, fpvx, fpvy, fsvx, fsvy, relativeVelocityX, relativeVelocityY, distX / dist, distY / dist);
+                    collisionPriority.push(ct);
+                    collisionEventMap[uniquePairingHash(primary, secondary)] = ct;
+                }
+            }   
+        // }
     }
 
 }
@@ -384,7 +628,8 @@ void calculateCollision2() {
             p = ct->primary;
             s = ct->secondary;
             sumMass = massL[s] + massL[p];
-            
+            dt = TIMESTEP - ct->time;
+
             positionXL[p] += ct->fpvx * ct->time;
             positionYL[p] += ct->fpvy * ct->time;
             positionXL[s] += ct->fsvx * ct->time;
@@ -395,26 +640,18 @@ void calculateCollision2() {
             distX = positionXL[s] - positionXL[p];
             distY = positionYL[s] - positionYL[p];
             dist = sqrt(distX * distX + distY * distY);
-            // if (dist - sumRadii > 0.001) {
-            //     std::cout << "af p[" << p << "]: " << positionXL[p] << " | p[" << s << "]: " << positionXL[s] <<  " ct: "<< ct->time << std::endl;
-            // } 
 
             uDx = distX / dist;
             uDy = distY / dist;
 
             b = ct->rVx * distX + ct->rVy * distY;
 
-            dt = TIMESTEP - ct->time;
             m = ((1.0f + eccentricity) / sumMass) * (b / sumRadii);
-          //  std::cout << "bf v[" << p << "]: " << velocityXL[p] << " | v[" << s << "]: " << velocityXL[s] <<  " ct: "<< ct->time << std::endl;
+  
             ct->fpvx += m * massL[s] * uDx;
             ct->fpvy += m * massL[s] * uDy;
             ct->fsvx -= m * massL[p] * uDx; 
             ct->fsvy -= m * massL[p] * uDy;
-            
-            // std::cout << "at v[" << p << "]: " << velocityXL[p] << " | v[" << s << "]: " << velocityXL[s] <<  " ct: "<< ct->time << std::endl;
-            
-            // std::cout << "uDx[" << p << "]: " << ct->uDx << " | uDy[" << s << "]: " << ct->uDy <<  " ct: "<< ct->time << std::endl;
             
             positionXL[p] += ct->fpvx * dt;
             positionYL[p] += ct->fpvy * dt;
@@ -486,13 +723,6 @@ void renderParticle() {
         pixels[(x + y * WIDTH) * 4 + 1] = 255;  // Green
         pixels[(x + y * WIDTH) * 4 + 2] = 255;  // Blue
         pixels[(x + y * WIDTH) * 4 + 3] = 255;  // Alpha
-
-        // if (i == 0) {
-        //     pixels[(x + y * WIDTH) * 4 + 0] = 255;  // Red
-        //     pixels[(x + y * WIDTH) * 4 + 1] = 255;  // Green
-        //     pixels[(x + y * WIDTH) * 4 + 2] = 255;  // Blue
-        //     pixels[(x + y * WIDTH) * 4 + 3] = 255;  // Alpha
-        // }
     
     }
 }
