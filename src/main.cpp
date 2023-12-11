@@ -131,6 +131,9 @@ float panY = 0;
 
 int mode = 0;
 
+double lastTime;
+int nbFrames;
+
 float massSel = 10;
 
 bool pause = true;
@@ -271,6 +274,21 @@ static void cursorPosCallback(GLFWwindow* window, double xpos, double ypos) {
 void scrollCallback(GLFWwindow* window, double xoffset, double yoffset) {
     // massSel += yoffset; //zoom
     zoom -= yoffset * 10;
+}
+
+void initTimer() {
+    lastTime = glfwGetTime();
+    nbFrames = 0;
+}
+
+void tickTimer() {
+    double currentTime = glfwGetTime();
+    nbFrames++;
+    if (currentTime - lastTime >= 1) {
+        std::cout << (1000.0 / nbFrames) << "ms/frame" << std::endl;
+        nbFrames = 0;
+        lastTime = currentTime;
+    }
 }
 
 void drawGravSim() {
@@ -575,8 +593,10 @@ void color1() {
     computeShader = createShaderProgram(color1Src, (std::string)"color1");
     
     //draw
+    initTimer();
     while (!glfwWindowShouldClose(window)) {
         drawComputeShader();
+        tickTimer();
     }
 }
 
@@ -587,8 +607,10 @@ void color2() {
     computeShader = createShaderProgram(color2Src, (std::string)"color2");
     
     //draw
+    initTimer();
     while (!glfwWindowShouldClose(window)) {
         drawComputeShader();
+        tickTimer();
     }
 }
 
@@ -597,10 +619,13 @@ void color3() {
     colorGeneral();
     
     computeShader = createShaderProgram(color3Src, (std::string)"color3");
+    initTimer();
     
     //draw
+    initTimer();
     while (!glfwWindowShouldClose(window)) {
         drawComputeShader();
+        tickTimer();
     }
 }
 
@@ -611,6 +636,7 @@ void color4() {
     computeShader = createShaderProgram(color4Src, (std::string)"color4");
     
     //draw
+    initTimer();
     while (!glfwWindowShouldClose(window)) {
         drawComputeShader();
     }
@@ -658,11 +684,12 @@ void gravity(unsigned int particles, unsigned int gravMode) {
     glPointSize(3);
     //draw
     
-    
+    initTimer();
     while (!glfwWindowShouldClose(window)) {
         //std::cout << positionXL[0] << std::endl;
         drawGravity();
         if (!pause) updateWorld();
+        tickTimer();
         //std::this_thread::sleep_for(timespan);
     }
 }
@@ -704,11 +731,12 @@ void magnetism(unsigned int particles) {
     glPointSize(3);
     //draw
     
-    
+    initTimer();
     while (!glfwWindowShouldClose(window)) {
         //std::cout << positionXL[0] << std::endl;
         drawMag();
         if (!pause) updateWorldM();
+        tickTimer();
         //std::this_thread::sleep_for(timespan);
     }
 }
@@ -744,10 +772,12 @@ void gravityC(unsigned int particles) {
     glClearColor(0.f, 0.f, 0.f, 1.0f);
     glPointSize(3);
     //draw    
+    initTimer();
     while (!glfwWindowShouldClose(window)) {
         //std::cout << positionXL[0] << std::endl;
         drawGravityC();
         if (!pause) updateWorldC();
+        tickTimer();
         //std::this_thread::sleep_for(timespan);
     }
 }
@@ -781,12 +811,14 @@ void gravityC2(unsigned int particles) {
     glPointSize(sumRadii / 2);
     
     //draw    
+    initTimer();
     while (!glfwWindowShouldClose(window)) {
         //std::cout << positionXL[0] << std::endl;
         // std::cout << "drawgravityC2" << std::endl;
         
         drawGravity();
         if (!pause) updateWorldC2();
+        tickTimer();
         //std::this_thread::sleep_for(timespan);
     }
 }
