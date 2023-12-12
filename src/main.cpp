@@ -179,7 +179,7 @@ const float eccentricity = 0.5f;
 void initWorld(unsigned int particles);
 void initWorld(unsigned int particles, unsigned int mode);
 void initWorldC(unsigned int particles);
-void initWorldC2(unsigned int particles);
+void initWorldC2(unsigned int particles, unsigned int mode);
 void updateWorld();
 void updateWorldM();
 void updateWorldC();
@@ -782,7 +782,7 @@ void gravityC(unsigned int particles) {
     }
 }
 
-void gravityC2(unsigned int particles) {
+void gravityC2(unsigned int particles, unsigned int mode) {
     std::cout << "gravityC2" << std::endl;
     
     glGenBuffers(1, &forceBuffer);
@@ -798,7 +798,7 @@ void gravityC2(unsigned int particles) {
     
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
     
-    initWorldC2(particles);
+    initWorldC2(particles, mode);
     
     shaderProgram = createShaderProgram(vertSrc, fragSrc, "vert", "frag");
     computeShader = createShaderProgram(gravityC2Src, (std::string)"gravityC2");
@@ -904,8 +904,12 @@ int main(int argc, char *argv[]) {
             if (argc > 2) {
                 particles = (int)strtol(argv[2], &end, 10);
                 if (*end) particles = 10;
+                if (argc > 3) {
+                    gravMode = (int)strtol(argv[3], &end, 10);
+                    if (*end) gravMode = 0;
+                }
             }
-            gravityC2(particles);
+            gravityC2(particles, gravMode);
         } else if (strcmp(argv[1], "magnet") == 0) {
             mode = MODE_MAG;
             if (argc > 2) {
@@ -916,9 +920,9 @@ int main(int argc, char *argv[]) {
         } else { //default
             particles = (int)strtol(argv[1], &end, 10);
             if (*end) particles = 10;
-            gravityC2(particles);
+            gravityC2(particles, gravMode);
         }
-    } else gravityC2(particles);
+    } else gravityC2(particles, gravMode);
     
     glfwDestroyWindow(window);
     glDeleteProgram(shaderProgram);
@@ -930,6 +934,26 @@ int main(int argc, char *argv[]) {
     exit(EXIT_SUCCESS);
 }
 // UNIVERSE FUNCTIONS IMPLEMENTATION
+void random500();
+void planetAndSatellite();
+void planetAndRing();
+void twoParticlesStraight();
+void threeParticlesTriangle();
+void planetAndMeteor();
+void planetAndTidal();
+
+double getRand() {
+    return std::rand() / (double) RAND_MAX;
+}
+
+double getExpRand(double lambda) {
+    return std::exp(-lambda * getRand());
+}
+
+double integralExp(double lambda, double x) {
+    return (-1/lambda) * exp(-lambda * x) + (1/lambda);
+}
+
 void initWorld(unsigned int particles, unsigned int mode) {
     long unsigned i;
     //int r1, r2;
@@ -958,6 +982,84 @@ void initWorld(unsigned int particles, unsigned int mode) {
             float mass2 = 2000 / (dist);
             float v = sqrt((G * (mass + mass2))/dist);
             addParticle(mass2, x, y, -v * dY/ dist, v * dX/ dist);
+            // addParticle(100, x, y, y-200, x-200);
+        }
+    }
+    
+    if (mode == 4) {
+        // float radius = 200;
+        float mass = 8000000;
+        addParticle(mass, WIDTH / 2, HEIGHT / 2, 0, 0);
+        for (i = 0; i < particles; i++) {
+        // r1 = std::rand() % 2 ? 1 : -1;
+        // r2 = std::rand() % 2 ? 1 : -1;
+            // minDist = 0.0f;
+            // regen:
+                
+                
+                // int rad = 30 + (30 * std::log(std::rand() % (int)(1e38) + 1));
+                int rad = 20 + (pow(0.5, (1./1000) * ((std::rand() % 5000) - 8010)) + 100);
+                int deg = std::rand() % 3599;
+                
+                x = (int) rad * cos(deg * M_PI / 1800) + (WIDTH / 2);
+                y = (int) rad * sin(deg * M_PI / 1800) + (HEIGHT / 2);
+            //   std::cout << minDist << std::endl;
+            float dX = x - (WIDTH / 2);
+            float dY = (y - (HEIGHT / 2));
+            float dist = sqrt(dX * dX + dY * dY);
+            // if (dist > radius) goto regen;
+            
+            float mass2 = 2000 / (dist);
+            float v = sqrt((G * (mass + mass2))/dist);
+            addParticle(mass2, x, y, -v * dY/ dist, v * dX/ dist);
+            // addParticle(100, x, y, y-200, x-200);
+        }
+    }
+    
+    if (mode == 5) {
+        // float radius = 200;
+        float mass = 5;
+        float massCent = 1000000;
+        addParticle(massCent, WIDTH / 2, HEIGHT / 2, 0, 0);
+        for (i = 0; i < particles; i++) {
+        // r1 = std::rand() % 2 ? 1 : -1;
+        // r2 = std::rand() % 2 ? 1 : -1;
+            // minDist = 0.0f;
+            // regen:
+                double xScalar = 0.7;
+                
+                double theta = getRand() * (2 * M_PI);
+                double lambda = 4;
+                double r = getExpRand(lambda) * (xScalar / 2);
+                
+                double xD = (r * cos(theta) + 0.5) * WIDTH;
+                double yD = (r * sin(theta) + 0.5) * HEIGHT;
+                
+                double massCont = (integralExp(lambda, r) / integralExp(lambda, xScalar/2)) * (mass * particles);
+                double scalarVel = sqrt((G * (massCont + massCent)) / r);
+            //     int rad = 5 + 5 *  std::log(std::rand() % (WIDTH / 2) + (WIDTH / 4));
+            //     int deg = std::rand() % 360;
+                
+            //     x = (int) rad * cos(deg * M_PI / 180) + (WIDTH / 2);
+            //     y = (int) rad * sin(deg * M_PI / 180) + (HEIGHT / 4);
+                
+            //     double theta = 
+            // //   std::cout << minDist << std::endl;
+            float dX = xD - (WIDTH / 2);
+            float dY = (yD - (HEIGHT / 2));
+            float dist = sqrt(dX * dX + dY * dY);
+            // // if (dist > radius) goto regen;
+            
+            // float mass2 = 2000 / (dist);
+            // if (dist > radius) goto regen;
+            
+            float mass2 = 2000 / (dist);
+            
+            float v = sqrt((G * (massCent + massCont + mass2))/dist);
+            
+            // addParticle(mass, xD, yD, sin(theta) * scalarVel, -cos(theta) * scalarVel);
+            addParticle(mass2, xD, yD, -v * dY/ dist, v * dX/ dist);
+            
             // addParticle(100, x, y, y-200, x-200);
         }
     }
@@ -1081,34 +1183,43 @@ void initWorldM(unsigned int particles) {
     }
 }
 
-void initWorldC2(unsigned int particles) {
-    long unsigned i, j;
-    //int r1, r2;
-    int x, y;
-    float dist, minDist = 0.0f;
-    float sumRadii = 2.0f;
-    float deltaX, deltaY;
-    addParticleC2(100, 200, 200, 0, 0);
-    for (i = 0; i < particles; i++) {
-    // r1 = std::rand() % 2 ? 1 : -1;
-    // r2 = std::rand() % 2 ? 1 : -1;
-        minDist = 0.0f;
-        while(minDist < sumRadii) {
-            x = (int) (std::rand() % WIDTH);
-            y = (int) (std::rand() % HEIGHT);
-            for (j = 0; j < particleData.getSize(); ++j) {
-                deltaX = particleData[j][0] - x;
-                deltaY = particleData[j][1] - y;
-                dist = sqrt(deltaX * deltaX + deltaY * deltaY);
-                if (dist < minDist || j == 0) minDist = dist;
+void initWorldC2(unsigned int particles, unsigned int mode) {
+    if (mode == 0) {
+        long unsigned i, j;
+        //int r1, r2;
+        int x, y;
+        float dist, minDist = 0.0f;
+        float sumRadii = 2.0f;
+        float deltaX, deltaY;
+        addParticleC2(100, 200, 200, 0, 0);
+        for (i = 0; i < particles; i++) {
+        // r1 = std::rand() % 2 ? 1 : -1;
+        // r2 = std::rand() % 2 ? 1 : -1;
+            minDist = 0.0f;
+            while(minDist < sumRadii) {
+                x = (int) (std::rand() % WIDTH);
+                y = (int) (std::rand() % HEIGHT);
+                for (j = 0; j < particleData.getSize(); ++j) {
+                    deltaX = particleData[j][0] - x;
+                    deltaY = particleData[j][1] - y;
+                    dist = sqrt(deltaX * deltaX + deltaY * deltaY);
+                    if (dist < minDist || j == 0) minDist = dist;
+                }
+            //   std::cout << minDist << std::endl;
             }
-        //   std::cout << minDist << std::endl;
+            addParticleC2(100, x, y, 0, 0);
         }
-        addParticleC2(100, x, y, 0, 0);
-    }
+    } else if (mode == 1) random500();
+    else if (mode == 2) twoParticlesStraight();
+    else if (mode == 3) threeParticlesTriangle();
+    else if (mode == 4) planetAndSatellite();
+    else if (mode == 5) planetAndRing();
+    else if (mode == 6) planetAndMeteor();
+    else if (mode == 7) planetAndTidal();
 }
 
 void addParticle(float mass, float x, float y, float vx, float vy) {
+    // std::cout << x << "," << y << "," << mass << std::endl;
     float data[3] = {x, y, mass};
     particleData.add(data);
     verts.push_back(x/WIDTH);
@@ -1164,6 +1275,335 @@ void addParticleC2(float mass, float x, float y, float vx, float vy) {
     forceData.add(force);
     collision.push_back(0);
 }
+
+void random500() {
+    long unsigned i, j;
+    int x, y;
+    float dist, minDist = 0.0f;
+    float deltaX, deltaY;
+
+    addParticleC2(100, 200, 200, 0, 0);
+    for (i = 0; i < 500; i++) {
+        minDist = 0.0f;
+        while(minDist <= sumRadii) {
+            x = (int) (std::rand() % 790) + 10;
+            y = (int) (std::rand() % 790) + 10;
+            for (j = 0; j < particleData.getSize(); ++j) {
+                deltaX = particleData[j][0] - x;
+                deltaY = particleData[j][1] - y;
+                dist = sqrt(deltaX * deltaX + deltaY * deltaY);
+                if (dist < minDist || j == 0) minDist = dist;
+            }
+        }
+        addParticleC2(100, x, y, 0, 0);
+    }
+}
+
+void twoParticlesStraight() {
+    addParticleC2(1000, 200, 200, 0, 0);
+    addParticleC2(1000, 300, 200, 0, 0);
+}
+
+void threeParticlesTriangle() {
+    addParticleC2(1000, 200, 200, 0, 0);
+    addParticleC2(1000, 250, 286.6, 0, 0);
+    addParticleC2(1000, 300, 200, 0, 0);
+}
+
+
+
+void planetAndSatellite() {
+    long unsigned i, j;
+    int x, y;
+    float dist, minDist = 0.0f;
+    float deltaX, deltaY;
+    
+    float distance = 600;
+
+    float coreMassS = 100;
+    float childMassS = 30;
+
+    float coreMassP = 100000;
+    float childMassP = 100;
+
+    float corePosPX = 400;
+    float corePosPY = 400;
+
+    float corePosSX = corePosPX;
+    float corePosSY = corePosPY - distance;
+
+    float childCountS = 50;
+    float childCountP = 0;
+
+
+    // float totalMassS = coreMassS + (childMassS * childCountS);
+    float totalMassP = coreMassP + (childMassP * childCountP);
+    
+    int spaceBias = 50;
+    int boxLengthP = sqrt(childCountP + spaceBias) * (sumRadii + 1);
+    int boxLengthS = sqrt(childCountS + spaceBias) * (sumRadii + 1);
+
+    double v = sqrt(G * (totalMassP) / distance);
+
+    std::cout << "p bx:"<< boxLengthP << std::endl;
+   
+    std::cout << "px " << "min: " <<  corePosPX - (boxLengthP / 2) << " max: " << boxLengthP + corePosPX << std::endl;
+    std::cout << "py " << "min: " <<  corePosPY - (boxLengthP / 2) << " max: " << boxLengthP + corePosPY << std::endl;
+
+    addParticleC2(coreMassP, corePosPX, corePosPY, 0, 0);
+    for (i = 0; i < childCountP; i++) {
+        minDist = 0.0f;
+        while(minDist <= sumRadii + 1) {
+            x = (int) (std::rand() % boxLengthP) + corePosPX - (boxLengthP / 2);
+            y = (int) (std::rand() % boxLengthP) + corePosPY - (boxLengthP / 2);
+            for (j = 0; j < particleData.getSize(); ++j) {
+                deltaX = particleData[j][0] - x;
+                deltaY = particleData[j][1] - y;
+                dist = sqrt(deltaX * deltaX + deltaY * deltaY);
+                if (dist < minDist || j == 0) minDist = dist;
+            }
+        }
+        addParticleC2(childMassP, x, y, 0, 0);
+    }
+    //std::cout << v << std::endl;
+    
+    addParticleC2(coreMassS, corePosSX, corePosSY, v, 0);
+    for (i = 0; i < childCountS; i++) {
+        minDist = 0.0f;
+        while(minDist <= sumRadii + 1) {
+            x = (int) (std::rand() % boxLengthS) + corePosSX - (boxLengthS / 2);
+            y = (int) (std::rand() % boxLengthS) + corePosSY - (boxLengthS / 2);
+            for (j = 0; j < particleData.getSize(); ++j) {
+                deltaX = particleData[j][0] - x;
+                deltaY = particleData[j][1] - y;
+                dist = sqrt(deltaX * deltaX + deltaY * deltaY);
+                if (dist < minDist || j == 0) minDist = dist;
+            }
+        }
+        addParticleC2(childMassS, x, y, v, 0);
+    }
+}
+
+void planetAndRing() {
+    long unsigned i, j;
+    int x, y;
+    float dist, minDist = 0.0f;
+    float deltaX, deltaY;
+    
+    float distance = 600;
+
+    float coreMassS = 100;
+    float childMassS = 30;
+
+    float coreMassP = 1000000;
+    float childMassP = 100;
+
+    float corePosPX = 400;
+    float corePosPY = 400;
+
+    float corePosSX = corePosPX;
+    float corePosSY = corePosPY - distance;
+
+    float childCountS = 50;
+    float childCountP = 0;
+
+
+    // float totalMassS = coreMassS + (childMassS * childCountS);
+    float totalMassP = coreMassP + (childMassP * childCountP);
+    
+    int spaceBias = 50;
+    int boxLengthP = sqrt(childCountP + spaceBias) * (sumRadii + 1);
+    int boxLengthS = sqrt(childCountS + spaceBias) * (sumRadii + 1);
+
+    double v = sqrt(G * (totalMassP) / distance);
+
+    std::cout << "p bx:"<< boxLengthP << std::endl;
+   
+    std::cout << "px " << "min: " <<  corePosPX - (boxLengthP / 2) << " max: " << boxLengthP + corePosPX << std::endl;
+    std::cout << "py " << "min: " <<  corePosPY - (boxLengthP / 2) << " max: " << boxLengthP + corePosPY << std::endl;
+
+    addParticleC2(coreMassP, corePosPX, corePosPY, 0, 0);
+    for (i = 0; i < childCountP; i++) {
+        minDist = 0.0f;
+        while(minDist <= sumRadii + 1) {
+            x = (int) (std::rand() % boxLengthP) + corePosPX - (boxLengthP / 2);
+            y = (int) (std::rand() % boxLengthP) + corePosPY - (boxLengthP / 2);
+            for (j = 0; j < particleData.getSize(); ++j) {
+                deltaX = particleData[j][0] - x;
+                deltaY = particleData[j][1] - y;
+                dist = sqrt(deltaX * deltaX + deltaY * deltaY);
+                if (dist < minDist || j == 0) minDist = dist;
+            }
+        }
+        addParticleC2(childMassP, x, y, 0, 0);
+    }
+    //std::cout << v << std::endl;
+    
+    addParticleC2(coreMassS, corePosSX, corePosSY, v, 0);
+    for (i = 0; i < childCountS; i++) {
+        minDist = 0.0f;
+        while(minDist <= sumRadii + 1) {
+            x = (int) (std::rand() % boxLengthS) + corePosSX - (boxLengthS / 2);
+            y = (int) (std::rand() % boxLengthS) + corePosSY - (boxLengthS / 2);
+            for (j = 0; j < particleData.getSize(); ++j) {
+                deltaX = particleData[j][0] - x;
+                deltaY = particleData[j][1] - y;
+                dist = sqrt(deltaX * deltaX + deltaY * deltaY);
+                if (dist < minDist || j == 0) minDist = dist;
+            }
+        }
+        addParticleC2(childMassS, x, y, v, 0);
+    }
+}
+
+
+
+void planetAndMeteor() {
+    long unsigned i, j;
+    int x, y;
+    float dist, minDist = 0.0f;
+    float deltaX, deltaY;
+    
+    float distance = 600;
+
+    float coreMassS = 1000;
+    float childMassS = 30;
+
+    float coreMassP = 1000;
+    float childMassP = 100;
+
+    float corePosPX = 400;
+    float corePosPY = 400;
+
+    float corePosSX = corePosPX;
+    float corePosSY = corePosPY - distance;
+
+    float childCountS = 10;
+    float childCountP = 100;
+
+
+    // float totalMassS = coreMassS + (childMassS * childCountS);
+    // float totalMassP = coreMassP + (childMassP * childCountP);
+    
+    int spaceBias = 50;
+    int boxLengthP = sqrt(childCountP + spaceBias) * (sumRadii + 1);
+    int boxLengthS = sqrt(childCountS + spaceBias) * (sumRadii + 1);
+
+
+    std::cout << "p bx:"<< boxLengthP << std::endl;
+   
+    std::cout << "px " << "min: " <<  corePosPX - (boxLengthP / 2) << " max: " << boxLengthP + corePosPX << std::endl;
+    std::cout << "py " << "min: " <<  corePosPY - (boxLengthP / 2) << " max: " << boxLengthP + corePosPY << std::endl;
+
+    addParticleC2(coreMassP, corePosPX, corePosPY, 0, 0);
+    for (i = 0; i < childCountP; i++) {
+        minDist = 0.0f;
+        while(minDist <= sumRadii + 1) {
+            x = (int) (std::rand() % boxLengthP) + corePosPX - (boxLengthP / 2);
+            y = (int) (std::rand() % boxLengthP) + corePosPY - (boxLengthP / 2);
+            for (j = 0; j < particleData.getSize(); ++j) {
+                deltaX = particleData[j][0] - x;
+                deltaY = particleData[j][0] - y;
+                dist = sqrt(deltaX * deltaX + deltaY * deltaY);
+                if (dist < minDist || j == 0) minDist = dist;
+            }
+        }
+        addParticleC2(childMassP, x, y, 0, 0);
+    }
+    //std::cout << v << std::endl;
+    
+    double v = 300;
+    addParticleC2(coreMassS, corePosSX, corePosSY, 0, v);
+    for (i = 0; i < childCountS; i++) {
+        minDist = 0.0f;
+        while(minDist <= sumRadii + 1) {
+            x = (int) (std::rand() % boxLengthS) + corePosSX - (boxLengthS / 2);
+            y = (int) (std::rand() % boxLengthS) + corePosSY - (boxLengthS / 2);
+            for (j = 0; j < particleData.getSize(); ++j) {
+                deltaX = particleData[j][0] - x;
+                deltaY = particleData[j][1] - y;
+                dist = sqrt(deltaX * deltaX + deltaY * deltaY);
+                if (dist < minDist || j == 0) minDist = dist;
+            }
+        }
+        addParticleC2(childMassS, x, y, 0, v);
+    }
+}
+
+
+void planetAndTidal() {
+    long unsigned i, j;
+    int x, y;
+    float dist, minDist = 0.0f;
+    float deltaX, deltaY;
+    
+    float distance = 1000;
+
+    float coreMassS = 1000000;
+    float childMassS = 10000;
+
+    float coreMassP = 1000;
+    float childMassP = 100;
+
+    float corePosPX = 300;
+    float corePosPY = 500;
+
+    float corePosSX = corePosPX + 200;
+    float corePosSY = corePosPY - distance;
+
+    float childCountS = 0;
+    float childCountP = 100;
+
+
+    // float totalMassS = coreMassS + (childMassS * childCountS);
+    // float totalMassP = coreMassP + (childMassP * childCountP);
+    
+    int spaceBias = 50;
+    int boxLengthP = sqrt(childCountP + spaceBias) * (sumRadii + 1);
+    int boxLengthS = sqrt(childCountS + spaceBias) * (sumRadii + 1);
+
+
+    std::cout << "p bx:"<< boxLengthP << std::endl;
+   
+    std::cout << "px " << "min: " <<  corePosPX - (boxLengthP / 2) << " max: " << boxLengthP + corePosPX << std::endl;
+    std::cout << "py " << "min: " <<  corePosPY - (boxLengthP / 2) << " max: " << boxLengthP + corePosPY << std::endl;
+
+    addParticleC2(coreMassP, corePosPX, corePosPY, 0, 0);
+    for (i = 0; i < childCountP; i++) {
+        minDist = 0.0f;
+        while(minDist <= sumRadii + 1) {
+            x = (int) (std::rand() % boxLengthP) + corePosPX - (boxLengthP / 2);
+            y = (int) (std::rand() % boxLengthP) + corePosPY - (boxLengthP / 2);
+            for (j = 0; j < particleData.getSize(); ++j) {
+                deltaX = particleData[j][0] - x;
+                deltaY = particleData[j][1] - y;
+                dist = sqrt(deltaX * deltaX + deltaY * deltaY);
+                if (dist < minDist || j == 0) minDist = dist;
+            }
+        }
+        addParticleC2(childMassP, x, y, 0, 0);
+    }
+    //std::cout << v << std::endl;
+    
+    double v = 200;
+    addParticleC2(coreMassS, corePosSX, corePosSY, 0, v);
+    for (i = 0; i < childCountS; i++) {
+        minDist = 0.0f;
+        while(minDist <= sumRadii + 1) {
+            x = (int) (std::rand() % boxLengthS) + corePosSX - (boxLengthS / 2);
+            y = (int) (std::rand() % boxLengthS) + corePosSY - (boxLengthS / 2);
+            for (j = 0; j < particleData.getSize(); ++j) {
+                deltaX = particleData[j][0] - x;
+                deltaY = particleData[j][1] - y;
+                dist = sqrt(deltaX * deltaX + deltaY * deltaY);
+                if (dist < minDist || j == 0) minDist = dist;
+            }
+        }
+        addParticleC2(childMassS, x, y, 0, v);
+    }
+}
+
+
 
 void calculatePositionC2() {
     // CALCULATE VELOCITIES, POSITIONS

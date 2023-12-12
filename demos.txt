@@ -1,0 +1,13 @@
+color1
+color2
+color4
+
+gravity 2000
+(cpu gravity)
+
+gravityC2 0 6
+gravityC2 0 4
+gravityC2 0 5
+
+
+gravity 20000 3

@@ -11,7 +11,7 @@ void main() {
     float scaleY2 = (scale.y/2);
     if (a_Position.z < 0) {
         f_Color = vec3(1,0,0);
-    } else f_Color = vec3(0,0,1);
+    } else f_Color = vec3(0.2,0.2,1);
     gl_Position = vec4((a_Position.x - scaleX2)/ scaleX2, (a_Position.y - scaleY2) / scaleY2, 0.0, 1);
 }
 #end
